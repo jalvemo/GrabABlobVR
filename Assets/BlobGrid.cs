@@ -28,24 +28,66 @@ public class BlobGrid : MonoBehaviour
     }
 
     int size = 4;
-    int height = 8;
-    float distance = 0.275f;
-    int removeThreshold = 3;
+    int height = 7;
+    int startHeight = 4;
+    float distance = 0.3f;//0.275f;
+    int removeThreshold = 4;
+
+    float spawnTimeInSeconds = 2.0f;
     
     List<Color> colors = new List<Color> {Color.green, Color.magenta, Color.red, Color.yellow, Color.blue};
     private Node[,,] _grid;
+    private Node[,,] _loadGrid;
 
     void Start()
     {      
-        _grid = new Node[size, height, size];
+        _grid  = new Node[size, height, size];
         for(int x = 0; x < size; x++) {
           for(int y = 0; y < height; y++) {
               for(int z = 0; z < size; z++) {
-                  InitNodeAt(new Position(x,y,z));
-                }
+                  var position = new Position(x,y,z);
+                  InitNodeAt(position, GetPositionVector(position),  _grid, y < startHeight);
+                }               
             }  
         }
+        _loadGrid = new Node[size, 1, size];
+        for(int x = 0; x < size; x++) {
+            int y = 0;
+            for(int z = 0; z < size; z++) {
+                var position = new Position(x,y,z);
+                InitNodeAt(position, GetPositionVector(position, height + 2), _loadGrid, false);
+            }                           
+        }
+     InvokeRepeating("FillFiller", 1f, 1.0f);  //1s delay, repeat every 1s
     }
+
+    void FillFiller() {
+        for(int x = 0; x < size; x++) {
+            int y = 0;
+            for(int z = 0; z < size; z++) {
+                if (_loadGrid[x,y,z].Blob == null) {
+                    var position = new Position(x,y,z);
+                    var vector = GetPositionVector(position, height + 2 ); // todo brak out height + 5
+                    CreateBlob(position, vector, false);
+                    return;
+                }
+
+            }                           
+        }
+        for(int x = 0; x < size; x++) {
+            int y = 0;
+            for(int z = 0; z < size; z++) {
+                var lowestFree = FindLowestFreeNode(x, z); // todo get highest kind of....
+                _loadGrid[x,y,z].Blob.GetComponent<XRGrabInteractable>().interactionLayerMask = FallLayer();
+                _loadGrid[x,y,z].Blob = null;
+                if (lowestFree != null ){
+                    CatchFallingBlobs(new List<Node>(){lowestFree});
+                }
+            }
+        }
+        // make all fall here 
+    }
+ 
 
 // Update is called once per frame
     void Update()
@@ -53,22 +95,27 @@ public class BlobGrid : MonoBehaviour
 
     }
 
-    private void InitNodeAt(Position position)
-    {
-        float offset = size * distance / 2;
+private void CreateBlob(Position position, Vector3 vector, bool randomColor = false) {    
+    GameObject blob = Instantiate(BlobPrefab);
+    blob.name = "blob " + position.ToString();
+    blob.transform.SetPositionAndRotation(vector, new Quaternion()); 
+    var color = randomColor ? colors[Random.Range(0, colors.Count)] : colors[(position.X + position.Y + position.Z) % (colors.Count - 1)];    
+    blob.GetComponent<Renderer> ().material.color = color;
+}
+private Vector3 GetPositionVector(Position position, int yStart = 0) {
+    float offset = size * distance / 2;
+    return new Vector3(position.X * distance - offset, (position.Y + yStart)* distance + 0.5f, position.Z * distance - offset);
+}
+
+    private void InitNodeAt(Position position, Vector3 vector, Node[,,] grid, bool addBlob)
+    {   
         
-        GameObject blob = Instantiate(BlobPrefab);
+        if (addBlob) { // todo break out
+            CreateBlob(position, vector);
+        }
+
         GameObject socket = Instantiate(SocketPrefab);
-
-        blob.name = "blob " + position.ToString();
-        socket.name = "socket " + position.ToString();
-        
-        var vector = new Vector3(position.X * distance - offset, position.Y * distance + 0.5f, position.Z * distance - offset);
-        blob.transform.SetPositionAndRotation(vector, new Quaternion()); 
-
-        //var color = colors[Random.Range(0, colors.Count)];
-        var color = colors[(position.X + position.Y + position.Z) % (colors.Count - 1)];
-        blob.GetComponent<Renderer> ().material.color = color;
+        socket.name = "socket " + position.ToString();       
 
         socket.transform.SetPositionAndRotation(vector, new Quaternion()); 
 
@@ -76,12 +123,12 @@ public class BlobGrid : MonoBehaviour
             Blob = null, // will be blob when connecting to socket
             Socket = socket,
             Position = new Position(position.X, position.Y, position.Z),
-            Color = color
+            Color = Color.white // just something not used
             };
 
         var socketInteractor = socket.GetComponent<Socket>();
     
-        socketInteractor.onSelectEntered.AddListener((_) => {
+        socketInteractor.onSelectEntered.AddListener((_) => { // have a queue for multiple trigger at the same time ?
             var droppedBlob = _.gameObject;
             node.Blob = droppedBlob;
             node.Color = droppedBlob.GetComponent<Renderer> ().material.color;
@@ -92,7 +139,7 @@ public class BlobGrid : MonoBehaviour
             //} else {
                 var connectedNodes = ConnectedNodes(node);        
                 if (connectedNodes.Count() >= removeThreshold) {
-                    Debug.Log("connected: " + connectedNodes.Count + ", color: " + color);
+                    Debug.Log("connected: " + connectedNodes.Count + ", color: " + node.Color);
                     StartCoroutine(DropOutInSeconds(connectedNodes, 0.5f));
                 }
             //}
@@ -109,7 +156,7 @@ public class BlobGrid : MonoBehaviour
         });
 
 
-        _grid[position.X, position.Y, position.Z] = node;
+        grid[position.X, position.Y, position.Z] = node;
     }
     private IEnumerator FallAboveIn(Node node, float t) {
         yield return new WaitForSeconds(t);

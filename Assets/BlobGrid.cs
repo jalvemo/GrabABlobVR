@@ -12,7 +12,6 @@ using System.Linq;
 To-do list:
 
 bugs
-* no spinning sky that makes me dizzy
 * when blobs fall fast they fall out of teir sockets.
 
 bigger things
@@ -26,6 +25,7 @@ bigger things
 * game mode 2d would still be fun i think 
 * point counter
 * cieling 
+* merge connecting blobs 
 
 
 big things
@@ -61,7 +61,7 @@ public class BlobGrid : MonoBehaviour
     float distance = 0.3f;//0.275f;
     int removeThreshold = 4;
 
-    float spawnTimeInSeconds = 0.1f;
+    float spawnTimeInSeconds = 1.1f;
     
     List<Color> colors = new List<Color> {Color.green, Color.magenta, Color.red, Color.yellow, Color.blue};
     private Node[,,] _grid;

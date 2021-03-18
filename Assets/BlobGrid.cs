@@ -5,6 +5,34 @@ using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.Events;
 
 using System.Linq;
+
+
+/*
+
+To-do list:
+
+bugs
+* no spinning sky that makes me dizzy
+* when blobs fall fast they fall out of teir sockets.
+
+bigger things
+* sound efects 
+* background sound
+* environments
+* vizualize controllers 
+* penelty when loosing a ball. big black block. lives
+* in game menu (pip boy?)
+* pre game menue
+* game mode 2d would still be fun i think 
+* point counter
+* cieling 
+
+
+big things
+* multiplayer
+
+
+*/
 public class BlobGrid : MonoBehaviour
 {
     public GameObject BlobPrefab;
@@ -33,7 +61,7 @@ public class BlobGrid : MonoBehaviour
     float distance = 0.3f;//0.275f;
     int removeThreshold = 4;
 
-    float spawnTimeInSeconds = 2.0f;
+    float spawnTimeInSeconds = 0.1f;
     
     List<Color> colors = new List<Color> {Color.green, Color.magenta, Color.red, Color.yellow, Color.blue};
     private Node[,,] _grid;
@@ -55,10 +83,10 @@ public class BlobGrid : MonoBehaviour
             int y = 0;
             for(int z = 0; z < size; z++) {
                 var position = new Position(x,y,z);
-                InitNodeAt(position, GetPositionVector(position, height + 2), _loadGrid, false);
+                InitNodeAt(position, GetPositionVector(position, height + 2), _loadGrid, false, false);
             }                           
         }
-     InvokeRepeating("FillFiller", 1f, 1.0f);  //1s delay, repeat every 1s
+     InvokeRepeating("FillFiller", 1f, spawnTimeInSeconds);
     }
 
     void FillFiller() {
@@ -68,7 +96,7 @@ public class BlobGrid : MonoBehaviour
                 if (_loadGrid[x,y,z].Blob == null) {
                     var position = new Position(x,y,z);
                     var vector = GetPositionVector(position, height + 2 ); // todo brak out height + 5
-                    CreateBlob(position, vector, false);
+                    CreateBlob(position, vector, true); 
                     return;
                 }
 
@@ -77,11 +105,11 @@ public class BlobGrid : MonoBehaviour
         for(int x = 0; x < size; x++) {
             int y = 0;
             for(int z = 0; z < size; z++) {
-                var lowestFree = FindLowestFreeNode(x, z); // todo get highest kind of....
+                var lowestFree = FindLowestFreeNodeOnTop(x, z); // todo get highest kind of....
                 _loadGrid[x,y,z].Blob.GetComponent<XRGrabInteractable>().interactionLayerMask = FallLayer();
                 _loadGrid[x,y,z].Blob = null;
                 if (lowestFree != null ){
-                    CatchFallingBlobs(new List<Node>(){lowestFree});
+                    CatchFallingBlobs(new List<Node>(){lowestFree}); 
                 }
             }
         }
@@ -107,7 +135,7 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
     return new Vector3(position.X * distance - offset, (position.Y + yStart)* distance + 0.5f, position.Z * distance - offset);
 }
 
-    private void InitNodeAt(Position position, Vector3 vector, Node[,,] grid, bool addBlob)
+    private void InitNodeAt(Position position, Vector3 vector, Node[,,] grid, bool addBlob, bool connectionListener = true)
     {   
         
         if (addBlob) { // todo break out
@@ -127,7 +155,9 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
             };
 
         var socketInteractor = socket.GetComponent<Socket>();
-    
+
+        grid[position.X, position.Y, position.Z] = node;
+
         socketInteractor.onSelectEntered.AddListener((_) => { // have a queue for multiple trigger at the same time ?
             var droppedBlob = _.gameObject;
             node.Blob = droppedBlob;
@@ -137,10 +167,12 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
             //if (lowestFree != null && lowestFree.Position.Y < node.Position.Y) {
             //    FallAbove(lowestFree);
             //} else {
-                var connectedNodes = ConnectedNodes(node);        
-                if (connectedNodes.Count() >= removeThreshold) {
-                    Debug.Log("connected: " + connectedNodes.Count + ", color: " + node.Color);
-                    StartCoroutine(DropOutInSeconds(connectedNodes, 0.5f));
+                if (connectionListener) {
+                    var connectedNodes = ConnectedNodes(node);        
+                    if (connectedNodes.Count() >= removeThreshold) {
+                        Debug.Log("connected: " + connectedNodes.Count + ", color: " + node.Color);
+                        StartCoroutine(DropOutInSeconds(connectedNodes, 0.5f));
+                    }
                 }
             //}
 
@@ -156,7 +188,6 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
         });
 
 
-        grid[position.X, position.Y, position.Z] = node;
     }
     private IEnumerator FallAboveIn(Node node, float t) {
         yield return new WaitForSeconds(t);
@@ -172,6 +203,19 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
             }
         }
         return null;
+    }
+    private Node FindLowestFreeNodeOnTop(int x, int z) {
+        if (_grid[x, height - 1, z].Blob != null) { // top
+            return null;
+        }
+
+        for(int i = height - 2; i > 0 ; i--) {
+            if (_grid[x, i, z].Blob != null)
+            {
+                return _grid[x, i + 1, z];
+            }
+        }
+        return _grid[x, 0, z]; // bottom
     }
 
     private List<Node> GetAboveInOrder(Node node) {
@@ -259,7 +303,7 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
     }
 
     // catchingNodes: ordered list of nodes with catching sockets.
-    private void CatchFallingBlobs(List<Node> catchingNodes) {
+    private void CatchFallingBlobs(List<Node> catchingNodes) { // todo: what if falling is blocked?
         if (catchingNodes.Count == 0) {
             return;
         }

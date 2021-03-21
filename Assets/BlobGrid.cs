@@ -28,6 +28,8 @@ bigger things
 * cieling (fall out)
 * merge connecting blobs 
 * warning on stak close maxed out (sound? arrow?)
+* hearts in blobs, release to gain health 
+
 
 
 big things
@@ -51,6 +53,7 @@ box power could be
 * big release of random blobs on top of stack
 * randomise a slice of other players stack
 * dynamite, radial dstuction of blobs.  time it with the fuse. 
+* rotate other players stack keeping the blob relations but a bit confusing
 
 handicap worse player need lesser combos for powerups 
 
@@ -83,7 +86,7 @@ public class BlobGrid : MonoBehaviour
     float distance = 0.3f;//0.275f;
     int removeThreshold = 4;
 
-    float spawnTimeInSeconds = 0.5f;
+    float spawnTimeInSeconds = 2.1f;
     
     List<Color> colors = new List<Color> {Color.green, Color.magenta, Color.red, Color.yellow, Color.blue};
     private Node[,,] _grid;
@@ -119,7 +122,7 @@ public class BlobGrid : MonoBehaviour
             for(int z = 0; z < size; z++) {
                 if (_fillerGrid[x,y,z].Blob == null) {
                     var position = new Position(x,y,z);
-                    var vector = GetPositionVector(position, fillerGridYPosition); // todo brak out height + 5
+                    var vector = GetPositionVector(position, fillerGridYPosition); 
                     CreateBlob(position, vector, true); 
                     return;
                 }
@@ -130,8 +133,9 @@ public class BlobGrid : MonoBehaviour
         for(int x = 0; x < size; x++) {
             int y = 0;
             for(int z = 0; z < size; z++) {
-                var lowestFree = FindLowestFreeNodeOnTop(x, z); // todo get highest kind of....
+                var lowestFree = FindLowestFreeNodeOnTop(x, z); 
                 _fillerGrid[x,y,z].Blob.GetComponent<XRGrabInteractable>().interactionLayerMask = FallLayer();
+                _fillerGrid[x,y,z].Blob.GetComponent<Rigidbody>().interpolation = RigidbodyInterpolation.None;                
                 _fillerGrid[x,y,z].Blob = null;
                 if (lowestFree != null ){
                     CatchFallingBlobs(new List<Node>(){lowestFree}); 
@@ -186,6 +190,8 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
             var droppedBlob = _.gameObject;
             node.Blob = droppedBlob;
             node.Color = droppedBlob.GetComponent<Renderer> ().material.color;
+
+            //droppedBlob.GetComponent<Rigidbody>().interpolation = RigidbodyInterpolation.Interpolate;
 
             if (connectionListener) {
                 var connectedNodes = ConnectedNodes(node);        
@@ -303,6 +309,9 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
             foreach (var fallingBlob in fallingBlobs)
             {
                 fallingBlob.GetComponent<XRGrabInteractable>().interactionLayerMask = FallLayer();
+                fallingBlob.GetComponent<Rigidbody>().interpolation = RigidbodyInterpolation.None;                
+
+                
             }
             foreach (var fallingNode in fallingNodes)
             {

@@ -12,25 +12,47 @@ using System.Linq;
 To-do list:
 
 bugs
-* when blobs fall fast they fall out of teir sockets.
+* when blobs fall fast they fall out of teir sockets., remove interpolate solves it but that is choppy....
 
 bigger things
 * sound efects 
 * background sound
 * environments
-* vizualize controllers 
+* vizualize controllers, catch blobs away from hand.
 * penelty when loosing a ball. big black block. lives
 * in game menu (pip boy?)
-* pre game menue
+* pre game menu, it would be cool if you dont have pre-menu and spawn diectly in the world to fool around. you can configure and join games from tthe world. 
 * game mode 2d would still be fun i think 
-* point counter
-* cieling 
+* point counter 
+* difficulity increesed
+* cieling (fall out)
 * merge connecting blobs 
+* warning on stak close maxed out (sound? arrow?)
 
 
 big things
 * multiplayer
 
+
+ideas
+Cooperative work on the same stack/grid 2 vs 0 2 vs 2 
+
+Mariokart boxes, you get random boxes of "things you can do" when executing combos. but can only keep 1, 2, 3 specials. 
+catch up, player behind might get better items like in marikart. (who is behind i dont know..)..
+box power could be
+* send different kind of blocks to the other player, like pyo pyo stones
+* spawn at the other players stack to change there blobs for a short time, dropping blobs end powerup.
+* throw things at the other player,(dont know what) something that require 
+* fog foe the other players
+* pixel camera for the other players hope it is dizzy proof. like this: https://assetstore.unity.com/packages/vfx/shaders/fullscreen-camera-effects/pixelation-65554?aid=1100l355n&gclid=Cj0KCQjwl9GCBhDvARIsAFunhsnxGxkAdjtTEYirZv-vhIGEsPDZ93_kD2XYbR5LK5CI16obsGbkI6kaAp2vEALw_wcB&pubref=UnityAssets%2ADynNew08%2A1723478829%2A67594162255%2A336277500151%2Ag%2A%2A%2Ab%2Ac%2Agclid%3DCj0KCQjwl9GCBhDvARIsAFunhsnxGxkAdjtTEYirZv-vhIGEsPDZ93_kD2XYbR5LK5CI16obsGbkI6kaAp2vEALw_wcB&utm_source=aff
+* release other players fillup.
+* randomise other players stgack
+* pause fillup
+* big release of random blobs on top of stack
+* randomise a slice of other players stack
+* dynamite, radial dstuction of blobs.  time it with the fuse. 
+
+handicap worse player need lesser combos for powerups 
 
 */
 public class BlobGrid : MonoBehaviour
@@ -55,17 +77,19 @@ public class BlobGrid : MonoBehaviour
         return DummyOutPrefab.GetComponent<XRGrabInteractable>().interactionLayerMask;
     }
 
-    int size = 4;
+    int size = 3;
     int height = 7;
     int startHeight = 4;
     float distance = 0.3f;//0.275f;
     int removeThreshold = 4;
 
-    float spawnTimeInSeconds = 1.1f;
+    float spawnTimeInSeconds = 0.5f;
     
     List<Color> colors = new List<Color> {Color.green, Color.magenta, Color.red, Color.yellow, Color.blue};
     private Node[,,] _grid;
-    private Node[,,] _loadGrid;
+    private Node[,,] _fillerGrid;
+
+    private int fillerGridYPosition = 8; // higher then height
 
     void Start()
     {      
@@ -78,12 +102,12 @@ public class BlobGrid : MonoBehaviour
                 }               
             }  
         }
-        _loadGrid = new Node[size, 1, size];
+        _fillerGrid = new Node[size, 1, size];
         for(int x = 0; x < size; x++) {
             int y = 0;
             for(int z = 0; z < size; z++) {
                 var position = new Position(x,y,z);
-                InitNodeAt(position, GetPositionVector(position, height + 2), _loadGrid, false, false);
+                InitNodeAt(position, GetPositionVector(position, fillerGridYPosition), _fillerGrid, false, false);
             }                           
         }
      InvokeRepeating("FillFiller", 1f, spawnTimeInSeconds);
@@ -93,27 +117,27 @@ public class BlobGrid : MonoBehaviour
         for(int x = 0; x < size; x++) {
             int y = 0;
             for(int z = 0; z < size; z++) {
-                if (_loadGrid[x,y,z].Blob == null) {
+                if (_fillerGrid[x,y,z].Blob == null) {
                     var position = new Position(x,y,z);
-                    var vector = GetPositionVector(position, height + 2 ); // todo brak out height + 5
+                    var vector = GetPositionVector(position, fillerGridYPosition); // todo brak out height + 5
                     CreateBlob(position, vector, true); 
                     return;
                 }
 
             }                           
         }
+        // Fall
         for(int x = 0; x < size; x++) {
             int y = 0;
             for(int z = 0; z < size; z++) {
                 var lowestFree = FindLowestFreeNodeOnTop(x, z); // todo get highest kind of....
-                _loadGrid[x,y,z].Blob.GetComponent<XRGrabInteractable>().interactionLayerMask = FallLayer();
-                _loadGrid[x,y,z].Blob = null;
+                _fillerGrid[x,y,z].Blob.GetComponent<XRGrabInteractable>().interactionLayerMask = FallLayer();
+                _fillerGrid[x,y,z].Blob = null;
                 if (lowestFree != null ){
                     CatchFallingBlobs(new List<Node>(){lowestFree}); 
                 }
             }
         }
-        // make all fall here 
     }
  
 
@@ -163,27 +187,17 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
             node.Blob = droppedBlob;
             node.Color = droppedBlob.GetComponent<Renderer> ().material.color;
 
-            //var lowestFree = FindLowestFreeNode(node.Position.X, node.Position.Z); 
-            //if (lowestFree != null && lowestFree.Position.Y < node.Position.Y) {
-            //    FallAbove(lowestFree);
-            //} else {
-                if (connectionListener) {
-                    var connectedNodes = ConnectedNodes(node);        
-                    if (connectedNodes.Count() >= removeThreshold) {
-                        Debug.Log("connected: " + connectedNodes.Count + ", color: " + node.Color);
-                        StartCoroutine(DropOutInSeconds(connectedNodes, 0.5f));
-                    }
+            if (connectionListener) {
+                var connectedNodes = ConnectedNodes(node);        
+                if (connectedNodes.Count() >= removeThreshold) {
+                    Debug.Log("connected: " + connectedNodes.Count + ", color: " + node.Color);
+                    StartCoroutine(DropOutInSeconds(connectedNodes, 0.5f));
                 }
-            //}
+            }
 
-           
         });
 
         socketInteractor.onSelectExited.AddListener((_) => { 
-            // dont init falling above blobs if exiting blob is a dop out. since drop out has special fall logic
-            //if (node.Blob.GetComponent<XRGrabInteractable>().interactionLayerMask != OutLayer()) { 
-            //    StartCoroutine(FallAboveIn(node, 0.5f));
-            //}
             node.Blob = null;
         });
 
@@ -209,7 +223,7 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
             return null;
         }
 
-        for(int i = height - 2; i > 0 ; i--) {
+        for(int i = height - 2; i >= 0 ; i--) {
             if (_grid[x, i, z].Blob != null)
             {
                 return _grid[x, i + 1, z];

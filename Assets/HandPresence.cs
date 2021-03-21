@@ -13,6 +13,7 @@ public class HandPresence : MonoBehaviour
     bool rightGrip = false;
     bool restart = false;
 
+    
     void Start()
     {
         List<InputDevice> devices = new List<InputDevice>();

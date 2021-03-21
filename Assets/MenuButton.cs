@@ -8,8 +8,7 @@ public class MenuButton : MonoBehaviour
     public Menu menu;
     void OnCollisionEnter(Collision collision) {
         Debug.Log("Menu pessed" + action.ToString());
-
-       menu.ButtonPressed(action);
+        menu.ButtonPressed(action);
     }
     // Start is called before the first frame update
     void Start()

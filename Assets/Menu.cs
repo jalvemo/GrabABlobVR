@@ -37,6 +37,16 @@ public class Menu : MonoBehaviour
         }
         RefreshText();
     }
+    public void Up()
+    {
+        selected = mod(selected - 1 , items.Count);
+        RefreshText();
+    }
+    public void Down()
+    {
+        selected = mod(selected + 1 , items.Count);
+        RefreshText();
+    }
     private void RefreshText() {
         var textCompontent = this.GetComponentInChildren<TextMeshPro>(); 
         textCompontent.text = "";

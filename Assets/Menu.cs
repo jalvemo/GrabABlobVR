@@ -54,7 +54,6 @@ public class Menu : MonoBehaviour
             textCompontent.text += "\n" + (i == selected ? "* " : "  ") + items[i];
         }
     }
-    private string header = "Menu";
     List<string> items = new List<string> {
         "Speed",
         "Size",

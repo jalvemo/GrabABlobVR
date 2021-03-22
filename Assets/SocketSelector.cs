@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
+using TMPro;
+
 
 
 public class SocketSelector : MonoBehaviour
@@ -11,7 +13,8 @@ public class SocketSelector : MonoBehaviour
         BOOL,
         INT
     }
-    Dictionary<XRSocketInteractor, string> Sockets;
+
+    public string displayName;
 
     public SocketSelectorType valueType; 
 
@@ -20,13 +23,19 @@ public class SocketSelector : MonoBehaviour
     public float maxValue = 1;
     public float curentValue = 0;
 
-    public GameObject MenuOptionPrefab;
-    public GameObject MenuSpharePrefab;
+    public GameObject SocketMenuOptionPrefab;
+    public GameObject SocketMenuSpharePrefab;
 
+    private TextMeshPro headerTextCompontent;
     private float distance = 0.15f;
     // Start is called before the first frame update
     void Start()
     {
+        float offset = -1 * distance * (optionCount + 2.5f) / 2;
+        headerTextCompontent = this.GetComponentInChildren<TextMeshPro>(); 
+        headerTextCompontent.text = displayName;
+        MoveRelativeToThis(headerTextCompontent.transform, new Vector3(0.0f, 0.0f, distance + offset)); 
+
         if (valueType == SocketSelectorType.BOOL) {
             optionCount = 2;
             minValue = 0;
@@ -43,13 +52,20 @@ public class SocketSelector : MonoBehaviour
     }
 
     void CreatSocket(int i, float optionValue) {
-        float offset = -1 * distance * (optionCount - 1) / 2;
-        GameObject option = Instantiate(MenuOptionPrefab);
+        GameObject option = Instantiate(SocketMenuOptionPrefab);
         var socket = option.GetComponent<XRSocketInteractor>();
-        socket.onSelectEntered.AddListener((_) => curentValue = optionValue);
-        socket.onSelectEntered.AddListener((_) => Debug.Log("value = " + optionValue));
-        //option.name = "socket " + position.ToString();       
-        option.transform.SetPositionAndRotation(transform.position + new Vector3(0.0f, 0.0f, i * distance + offset), new Quaternion()); 
+        var textComponent = option.GetComponentInChildren<TextMeshPro>();
+        textComponent.text = "" + optionValue;
+        socket.onSelectEntered.AddListener((_) => curentValue = optionValue);     
+       
+        float offset = -1 * distance * (optionCount - 1) / 2;
+        MoveRelativeToThis(option.transform, new Vector3(0.0f, 0.0f, i * distance + offset));
+    }
+
+    void MoveRelativeToThis(Transform gameObjectTransform, Vector3 relativePosition) {
+        gameObjectTransform.SetPositionAndRotation(transform.position + relativePosition, new Quaternion()); 
+        this.transform.rotation.ToAngleAxis(out float angle, out Vector3 axis);
+        gameObjectTransform.RotateAround(this.transform.position, axis, angle);
     }
     // Update is called once per frame
     void Update()

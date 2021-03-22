@@ -11,8 +11,18 @@ using System.Linq;
 
 To-do list:
 
+* menu
+    - size
+    - height
+    - speed
+    - lifes
+*  life counter
+
+
 bugs
-* when blobs fall fast they fall out of teir sockets., remove interpolate solves it but that is choppy....
+* when blobs fall fast they fall out of teir sockets., i removed interpolate solves it but that is choppy....look at collition detection mode?
+
+
 
 bigger things
 * sound efects 
@@ -25,7 +35,7 @@ bigger things
 * game mode 2d would still be fun i think 
 * point counter 
 * difficulity increesed
-* cieling (fall out)
+* cieling (fall out) life counter 
 * merge connecting blobs 
 * warning on stak close maxed out (sound? arrow?)
 * hearts in blobs, release to gain health 
@@ -84,7 +94,8 @@ public class BlobGrid : MonoBehaviour
     int height = 7;
     int startHeight = 4;
     float distance = 0.3f;//0.275f;
-    int removeThreshold = 4;
+    
+    public SocketSelector removeThresholdSelector;
 
     float spawnTimeInSeconds = 2.1f;
     
@@ -195,7 +206,7 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
 
             if (connectionListener) {
                 var connectedNodes = ConnectedNodes(node);        
-                if (connectedNodes.Count() >= removeThreshold) {
+                if (connectedNodes.Count() >= removeThresholdSelector.getInt()) {
                     Debug.Log("connected: " + connectedNodes.Count + ", color: " + node.Color);
                     StartCoroutine(DropOutInSeconds(connectedNodes, 0.5f));
                 }

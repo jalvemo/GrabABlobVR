@@ -97,7 +97,7 @@ public class BlobGrid : MonoBehaviour
     
     public SocketSelector removeThresholdSelector;
 
-    float spawnTimeInSeconds = 2.1f;
+    public SocketSelector dropDelay;
     
     List<Color> colors = new List<Color> {Color.green, Color.magenta, Color.red, Color.yellow, Color.blue};
     private Node[,,] _grid;
@@ -124,7 +124,12 @@ public class BlobGrid : MonoBehaviour
                 InitNodeAt(position, GetPositionVector(position, fillerGridYPosition), _fillerGrid, false, false);
             }                           
         }
-     InvokeRepeating("FillFiller", 1f, spawnTimeInSeconds);
+
+     InvokeRepeating("FillFiller", 1f, dropDelay.curentValue);
+     dropDelay.onChanged = () => {
+            CancelInvoke("FillFiller");
+            InvokeRepeating("FillFiller", 1f, dropDelay.curentValue);
+         };
     }
 
     void FillFiller() {

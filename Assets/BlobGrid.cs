@@ -14,7 +14,6 @@ To-do list:
 * menu
     - size
     - height
-    - speed
     - lifes
 *  life counter
 
@@ -22,7 +21,8 @@ To-do list:
 bugs
 * when blobs fall fast they fall out of teir sockets., i removed interpolate solves it but that is choppy....look at collition detection mode?
 
-
+small thing:
+* halt fall on combos, only way to manages fast speeds. 
 
 bigger things
 * sound efects 
@@ -36,7 +36,7 @@ bigger things
 * point counter 
 * difficulity increesed
 * cieling (fall out) life counter 
-* merge connecting blobs 
+* merge connecting blobs visually
 * warning on stak close maxed out (sound? arrow?)
 * hearts in blobs, release to gain health 
 

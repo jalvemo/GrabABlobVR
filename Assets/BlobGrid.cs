@@ -12,7 +12,7 @@ using System.Linq;
 To-do list:
 
 * menu
-    - size
+    - width
     - height
     - lifes
 *  life counter
@@ -27,24 +27,24 @@ small thing:
 bigger things
 * sound efects 
 * background sound
-* environments
-* vizualize controllers, catch blobs away from hand.
-* penelty when loosing a ball. big black block. lives
-* in game menu (pip boy?)
+* penelty when loosing a ball. big black block. lives / cieling (fall out) life counter 
 * pre game menu, it would be cool if you dont have pre-menu and spawn diectly in the world to fool around. you can configure and join games from tthe world. 
 * game mode 2d would still be fun i think 
 * point counter 
 * difficulity increesed
-* cieling (fall out) life counter 
 * merge connecting blobs visually
 * warning on stak close maxed out (sound? arrow?)
 * hearts in blobs, release to gain health 
 
+improve working version:
+* in game menu (pip boy?)
+* imptove controllers, catch blobs away from hand.
+* environments
 
 
 big things
 * multiplayer
-
+* AI 
 
 ideas
 Cooperative work on the same stack/grid 2 vs 0 2 vs 2 
@@ -70,6 +70,7 @@ handicap worse player need lesser combos for powerups
 */
 public class BlobGrid : MonoBehaviour
 {
+    public XRInteractionManager interactionManager;
     public GameObject BlobPrefab;
     public GameObject SocketPrefab;
 
@@ -90,8 +91,8 @@ public class BlobGrid : MonoBehaviour
         return DummyOutPrefab.GetComponent<XRGrabInteractable>().interactionLayerMask;
     }
 
-    int size = 3;
-    int height = 7;
+    int width = 3;
+    int height = 6;
     int startHeight = 4;
     float distance = 0.3f;//0.275f;
     
@@ -99,31 +100,69 @@ public class BlobGrid : MonoBehaviour
 
     public SocketSelector dropDelay;
     
+    public SocketSelector nextWidth;
+    public SocketSelector nextHeight;
+    public SocketSelector nextStartHeight;
+
     List<Color> colors = new List<Color> {Color.green, Color.magenta, Color.red, Color.yellow, Color.blue};
     private Node[,,] _grid;
     private Node[,,] _fillerGrid;
 
-    private int fillerGridYPosition = 8; // higher then height
+    private int fillerGridYPositionRelative = 2;
+
+    public void Restart() {
+        CancelInvoke("FillFiller");
+        System.Action<Node> cleanSocket = (node) => {
+            var interactable = node.Socket.GetComponent<XRBaseInteractable>();
+            interactionManager.UnregisterInteractable(interactable);
+
+            //Destroy(node.Socket);
+            var interactor = node.Socket.GetComponent<XRSocketInteractor>();
+            node.Socket.GetComponent<XRSocketInteractor>().enableInteractions = false;
+            // todo: find to reuse or actually remove theese.
+        };
+    
+        foreach (var node in _grid) { cleanSocket.Invoke(node); }
+        foreach (var node in _fillerGrid) { cleanSocket.Invoke(node); }
+
+        Invoke("Start", 1.5f);
+        //Start();
+    }
 
     void Start()
     {      
-        _grid  = new Node[size, height, size];
-        for(int x = 0; x < size; x++) {
+        _grid  = new Node[width, height, width];
+        for(int x = 0; x < width; x++) {
           for(int y = 0; y < height; y++) {
-              for(int z = 0; z < size; z++) {
+              for(int z = 0; z < width; z++) {
                   var position = new Position(x,y,z);
                   InitNodeAt(position, GetPositionVector(position),  _grid, y < startHeight);
                 }               
             }  
         }
-        _fillerGrid = new Node[size, 1, size];
-        for(int x = 0; x < size; x++) {
+        _fillerGrid = new Node[width, 1, width];
+        for(int x = 0; x < width; x++) {
             int y = 0;
-            for(int z = 0; z < size; z++) {
+            for(int z = 0; z < width; z++) {
                 var position = new Position(x,y,z);
-                InitNodeAt(position, GetPositionVector(position, fillerGridYPosition), _fillerGrid, false, false);
+                InitNodeAt(position, GetPositionVector(position, fillerGridYPositionRelative + height), _fillerGrid, false, false);
             }                           
         }
+
+    nextWidth.onChanged = () => {
+        width = nextWidth.GetInt();
+        Restart();
+    };
+
+    nextHeight.onChanged = () => {
+        height = nextHeight.GetInt();
+        Restart();
+    };
+
+    nextStartHeight.onChanged = () => {
+        startHeight = nextStartHeight.GetInt();
+        Restart();
+    };
 
      InvokeRepeating("FillFiller", 1f, dropDelay.curentValue);
      dropDelay.onChanged = () => {
@@ -133,12 +172,12 @@ public class BlobGrid : MonoBehaviour
     }
 
     void FillFiller() {
-        for(int x = 0; x < size; x++) {
+        for(int x = 0; x < width; x++) {
             int y = 0;
-            for(int z = 0; z < size; z++) {
+            for(int z = 0; z < width; z++) {
                 if (_fillerGrid[x,y,z].Blob == null) {
                     var position = new Position(x,y,z);
-                    var vector = GetPositionVector(position, fillerGridYPosition); 
+                    var vector = GetPositionVector(position, fillerGridYPositionRelative + height); 
                     CreateBlob(position, vector, true); 
                     return;
                 }
@@ -146,9 +185,9 @@ public class BlobGrid : MonoBehaviour
             }                           
         }
         // Fall
-        for(int x = 0; x < size; x++) {
+        for(int x = 0; x < width; x++) {
             int y = 0;
-            for(int z = 0; z < size; z++) {
+            for(int z = 0; z < width; z++) {
                 var lowestFree = FindLowestFreeNodeOnTop(x, z); 
                 _fillerGrid[x,y,z].Blob.GetComponent<XRGrabInteractable>().interactionLayerMask = FallLayer();
                 _fillerGrid[x,y,z].Blob.GetComponent<Rigidbody>().interpolation = RigidbodyInterpolation.None;                
@@ -175,7 +214,7 @@ private void CreateBlob(Position position, Vector3 vector, bool randomColor = fa
     blob.GetComponent<Renderer> ().material.color = color;
 }
 private Vector3 GetPositionVector(Position position, int yStart = 0) {
-    float offset = size * distance / 2;
+    float offset = width * distance / 2;
     return new Vector3(position.X * distance - offset, (position.Y + yStart)* distance + 0.5f, position.Z * distance - offset);
 }
 
@@ -211,7 +250,7 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
 
             if (connectionListener) {
                 var connectedNodes = ConnectedNodes(node);        
-                if (connectedNodes.Count() >= removeThresholdSelector.getInt()) {
+                if (connectedNodes.Count() >= removeThresholdSelector.GetInt()) {
                     Debug.Log("connected: " + connectedNodes.Count + ", color: " + node.Color);
                     StartCoroutine(DropOutInSeconds(connectedNodes, 0.5f));
                 }
@@ -418,7 +457,7 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
         return result.ToList();
     } 
 
-    private bool PositionInGrid(Position p) => p.X >= 0 && p.Y >= 0 && p.Z >= 0 && p.X < size && p.Y < height && p.Z < size;
+    private bool PositionInGrid(Position p) => p.X >= 0 && p.Y >= 0 && p.Z >= 0 && p.X < width && p.Y < height && p.Z < width;
      private Node NodeAt(Position p) {
         if (PositionInGrid(p)) {
             return _grid[p.X,p.Y,p.Z];

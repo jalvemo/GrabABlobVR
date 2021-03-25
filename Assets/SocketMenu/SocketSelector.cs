@@ -18,7 +18,7 @@ public class SocketSelector : MonoBehaviour
     public float maxValue = 1;
     public float curentValue = 0;
 
-    public int getInt() {
+    public int GetInt() {
         return Mathf.RoundToInt(curentValue);
     }
 

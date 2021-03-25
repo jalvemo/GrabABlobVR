@@ -64,6 +64,8 @@ box power could be
 * randomise a slice of other players stack
 * dynamite, radial dstuction of blobs.  time it with the fuse. 
 * rotate other players stack keeping the blob relations but a bit confusing
+* AI controllers helping you out.
+* AI controllers sabotaging.
 
 handicap worse player need lesser combos for powerups 
 
@@ -247,13 +249,8 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
             node.Color = droppedBlob.GetComponent<Renderer> ().material.color;
 
             //droppedBlob.GetComponent<Rigidbody>().interpolation = RigidbodyInterpolation.Interpolate;
-
             if (connectionListener) {
-                var connectedNodes = ConnectedNodes(node);        
-                if (connectedNodes.Count() >= removeThresholdSelector.GetInt()) {
-                    Debug.Log("connected: " + connectedNodes.Count + ", color: " + node.Color);
-                    StartCoroutine(DropOutInSeconds(connectedNodes, 0.5f));
-                }
+                StartCoroutine(checkForConnctedNodes(node, 0.1f)); //0.1 allows some time to drop 2 connected blobs
             }
 
         });
@@ -262,6 +259,17 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
             node.Blob = null;
         });
 
+
+    }
+    private IEnumerator checkForConnctedNodes (Node node, float t) {
+        yield return new WaitForSeconds(t);
+        
+        var connectedNodes = ConnectedNodes(node);        
+        if (connectedNodes.Count() >= removeThresholdSelector.GetInt()) {
+            Debug.Log("connected: " + connectedNodes.Count + ", color: " + node.Color);
+            StartCoroutine(DropOutInSeconds(connectedNodes, 0.5f));
+        }
+        
 
     }
     private IEnumerator FallAboveIn(Node node, float t) {

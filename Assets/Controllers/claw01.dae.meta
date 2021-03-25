@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 7ebf6f5c52d151e48815264687350b2c
+guid: 4fff6d1a9d9a0714bba1832f6d9f0a72
 ModelImporter:
   serializedVersion: 19301
   internalIDToNameTable: []
@@ -38,7 +38,7 @@ ModelImporter:
     meshCompression: 0
     addColliders: 0
     useSRGBMaterialColor: 1
-    sortHierarchyByName: 0
+    sortHierarchyByName: 1
     importVisibility: 0
     importBlendShapes: 0
     importCameras: 0
@@ -59,7 +59,7 @@ ModelImporter:
     secondaryUVAreaDistortion: 15.000001
     secondaryUVHardAngle: 88
     secondaryUVPackMargin: 4
-    useFileScale: 0
+    useFileScale: 1
   tangentSpace:
     normalSmoothAngle: 60
     normalImportMode: 0

@@ -317,6 +317,14 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
         return above;
     } 
 
+    private IEnumerator BlobDropAudioVisual(GameObject blob, float t) {
+        yield return new WaitForSeconds(t);
+        blob.transform.localScale = blob.transform.localScale * 0.7f;
+        var material = blob.GetComponent<Renderer> ().material;
+        material.color = Color.Lerp(material.color, Color.black, 0.8f);
+        audioSource.PlayOneShot(pop, 0.7F);
+
+    }
     private IEnumerator DropOutInSeconds(List<Node> nodes, float t)
     {
         
@@ -324,16 +332,11 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
         var blobGrabInteractables = nodes.Select(node => node.Blob.GetComponent<XRGrabInteractable>()).ToList();
 
         // scale mark as gone 
-        foreach (var node in nodes) {
-            node.Blob.transform.localScale = node.Blob.transform.localScale * 0.7f;
-            
-            var material = node.Blob.GetComponent<Renderer> ().material;
-            material.color = Color.Lerp(material.color, Color.black, 0.8f);
-            audioSource.PlayOneShot(pop, 0.7F);
-
-            
-            node.Blob = null; // (2) todo,might be dangerous this early 
+        for(int i = 0; i < nodes.Count; i++) {
+            StartCoroutine(BlobDropAudioVisual(nodes[i].Blob, i * t / nodes.Count));
+            nodes[i].Blob = null; // (2) todo,might be dangerous this early 
         }
+    
 
         //wait
         yield return new WaitForSeconds(t);

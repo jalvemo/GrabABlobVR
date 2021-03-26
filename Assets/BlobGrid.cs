@@ -9,12 +9,10 @@ using System.Linq;
 
 /*
 
-To-do list:
+sounds: 
+https://mixkit.co/free-sound-effects/game/?page=2
 
-* menu
-    - width
-    - height
-    - lifes
+To-do list:
 *  life counter
 
 
@@ -76,6 +74,11 @@ public class BlobGrid : MonoBehaviour
     public GameObject BlobPrefab;
     public GameObject SocketPrefab;
 
+
+    private AudioSource audioSource;
+    public AudioClip pop;
+    public AudioClip music;
+
     // Dummy prefabs. Just for getting the layers.
     public GameObject DummyKeepPrefab;
     public GameObject DummyFallPrefab;
@@ -133,6 +136,8 @@ public class BlobGrid : MonoBehaviour
 
     void Start()
     {      
+        audioSource = GetComponent<AudioSource>();
+        
         _grid  = new Node[width, height, width];
         for(int x = 0; x < width; x++) {
           for(int y = 0; y < height; y++) {
@@ -324,6 +329,8 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
             
             var material = node.Blob.GetComponent<Renderer> ().material;
             material.color = Color.Lerp(material.color, Color.black, 0.8f);
+            audioSource.PlayOneShot(pop, 0.7F);
+
             
             node.Blob = null; // (2) todo,might be dangerous this early 
         }

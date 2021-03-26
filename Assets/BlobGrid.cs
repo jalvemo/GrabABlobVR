@@ -471,7 +471,7 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
             .Where(n => !visited.Contains(n));
         //Debug.Log("toCheck: " + toCheck.Count());
 
-        var result = toCheck.SelectMany(nextNode => ConnectedNodes(nextNode, visited)).Concat(new[] { node });
+        var result = new[] { node }.Concat(toCheck.SelectMany(nextNode => ConnectedNodes(nextNode, visited)));
         return result.ToList();
     } 
 

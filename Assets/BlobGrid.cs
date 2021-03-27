@@ -18,6 +18,7 @@ To-do list:
 
 bugs
 * when blobs fall fast they fall out of teir sockets., i removed interpolate solves it but that is choppy....look at collition detection mode?
+* when falling blob miss the socket the socket is lost waiting for falling blob. 
 
 small thing:
 * halt fall on combos, only way to manages fast speeds. 
@@ -75,9 +76,11 @@ public class BlobGrid : MonoBehaviour
     public GameObject SocketPrefab;
 
 
+    public Light lighting;
     private AudioSource audioSource;
     public AudioClip pop;
     public AudioClip noFit;
+    public AudioClip gameOver;
 
     // Dummy prefabs. Just for getting the layers.
     public GameObject DummyKeepPrefab;
@@ -113,9 +116,14 @@ public class BlobGrid : MonoBehaviour
     private Node[,,] _grid;
     private Node[,,] _fillerGrid;
 
-    private int fillerGridYPositionRelative = 2;
+    private int fillerGridYPositionRelative = 0;
 
     public void Restart() {
+        Stop();
+        Invoke("Start", 1.5f);
+        
+    }
+    public void Stop() {
         CancelInvoke("FillFiller");
         System.Action<Node> cleanSocket = (node) => {
             var interactable = node.Socket.GetComponent<XRBaseInteractable>();
@@ -130,13 +138,14 @@ public class BlobGrid : MonoBehaviour
         foreach (var node in _grid) { cleanSocket.Invoke(node); }
         foreach (var node in _fillerGrid) { cleanSocket.Invoke(node); }
 
-        Invoke("Start", 1.5f);
         //Start();
     }
 
     void Start()
     {      
         audioSource = GetComponent<AudioSource>();
+
+        sequencialDropFailCount = 0;
         
         _grid  = new Node[width, height, width];
         for(int x = 0; x < width; x++) {
@@ -180,6 +189,9 @@ public class BlobGrid : MonoBehaviour
     }
 
     private float fillPauseDelay = 0.0f;      
+    private int gameOverDropFailThreshhold = 2;
+    private int sequencialDropFailCount = 0;
+
     void FillFiller() {
         if (fillPauseDelay > 0.0f) {
             Invoke("FillFiller", fillPauseDelay);
@@ -201,6 +213,7 @@ public class BlobGrid : MonoBehaviour
             }                           
         }
         // Fall
+        bool failed = false;
         for(int x = 0; x < width; x++) {
             int y = 0;
             for(int z = 0; z < width; z++) {
@@ -211,10 +224,22 @@ public class BlobGrid : MonoBehaviour
                 if (lowestFree != null ){
                     CatchFallingBlobs(new List<Node>(){lowestFree}); 
                 } else {
-                    audioSource.PlayOneShot(noFit);
-                    
+                    failed = true;
                 }
             }
+        }
+        if (failed) {
+            sequencialDropFailCount++;
+            if (sequencialDropFailCount >= gameOverDropFailThreshhold) {
+                audioSource.PlayOneShot(gameOver);
+                Stop();
+            } else {
+                audioSource.PlayOneShot(noFit);
+                lighting.color = Color.red;
+            }
+        } else {
+            sequencialDropFailCount = 0;
+            lighting.color = Color.white;
         }
         Invoke("FillFiller", dropDelay.curentValue);
     }
@@ -335,7 +360,7 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
         blob.transform.localScale = blob.transform.localScale * 0.7f;
         var material = blob.GetComponent<Renderer> ().material;
         material.color = Color.Lerp(material.color, Color.black, 0.8f);
-        audioSource.PlayOneShot(pop, 0.7F);
+        AudioSource.PlayClipAtPoint(pop, blob.transform.position);
 
     }
     private IEnumerator DropOutInSeconds(List<Node> nodes, float t)

@@ -77,7 +77,7 @@ public class BlobGrid : MonoBehaviour
 
     private AudioSource audioSource;
     public AudioClip pop;
-    public AudioClip music;
+    public AudioClip noFit;
 
     // Dummy prefabs. Just for getting the layers.
     public GameObject DummyKeepPrefab;
@@ -171,14 +171,22 @@ public class BlobGrid : MonoBehaviour
         Restart();
     };
 
-     InvokeRepeating("FillFiller", 1f, dropDelay.curentValue);
+     Invoke("FillFiller", dropDelay.curentValue);
+     
      dropDelay.onChanged = () => {
             CancelInvoke("FillFiller");
-            InvokeRepeating("FillFiller", 1f, dropDelay.curentValue);
-         };
+            Invoke("FillFiller", dropDelay.curentValue);
+        };
     }
 
+    private float fillPauseDelay = 0.0f;      
     void FillFiller() {
+        if (fillPauseDelay > 0.0f) {
+            Invoke("FillFiller", fillPauseDelay);
+            fillPauseDelay = 0.0f;
+            return;
+        }    
+    
         for(int x = 0; x < width; x++) {
             int y = 0;
             for(int z = 0; z < width; z++) {
@@ -186,6 +194,7 @@ public class BlobGrid : MonoBehaviour
                     var position = new Position(x,y,z);
                     var vector = GetPositionVector(position, fillerGridYPositionRelative + height); 
                     CreateBlob(position, vector, true); 
+                    Invoke("FillFiller", dropDelay.curentValue);
                     return;
                 }
 
@@ -201,9 +210,13 @@ public class BlobGrid : MonoBehaviour
                 _fillerGrid[x,y,z].Blob = null;
                 if (lowestFree != null ){
                     CatchFallingBlobs(new List<Node>(){lowestFree}); 
+                } else {
+                    audioSource.PlayOneShot(noFit);
+                    
                 }
             }
         }
+        Invoke("FillFiller", dropDelay.curentValue);
     }
  
 
@@ -336,6 +349,8 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
             StartCoroutine(BlobDropAudioVisual(nodes[i].Blob, i * t / nodes.Count));
             nodes[i].Blob = null; // (2) todo,might be dangerous this early 
         }
+
+        fillPauseDelay = t; // pause filling while falling..
     
 
         //wait

@@ -13,7 +13,6 @@ sounds:
 https://mixkit.co/free-sound-effects/game/?page=2
 
 To-do list:
-*  life counter
 
 
 bugs
@@ -21,11 +20,8 @@ bugs
 * when falling blob miss the socket the socket is lost waiting for falling blob. 
 
 small thing:
-* halt fall on combos, only way to manages fast speeds. 
 
 bigger things
-* sound efects 
-* background sound
 * penelty when loosing a ball. big black block. lives / cieling (fall out) life counter 
 * pre game menu, it would be cool if you dont have pre-menu and spawn diectly in the world to fool around. you can configure and join games from tthe world. 
 * game mode 2d would still be fun i think 
@@ -34,8 +30,12 @@ bigger things
 * merge connecting blobs visually
 * warning on stak close maxed out (sound? arrow?)
 * hearts in blobs, release to gain health 
+* characta inspo:
+    * https://joslin.artstation.com/projects/KgdLX
 
 improve working version:
+* background sound
+* sound efects 
 * in game menu (pip boy?)
 * imptove controllers, catch blobs away from hand.
 * environments
@@ -81,6 +81,8 @@ public class BlobGrid : MonoBehaviour
     public AudioClip pop;
     public AudioClip noFit;
     public AudioClip gameOver;
+    public AudioClip fallSound;
+    public AudioClip levelUpSound;
 
     // Dummy prefabs. Just for getting the layers.
     public GameObject DummyKeepPrefab;
@@ -117,13 +119,24 @@ public class BlobGrid : MonoBehaviour
     private Node[,,] _fillerGrid;
 
     private int fillerGridYPositionRelative = 0;
+    private float levelSpeedChange = 2.0f / 3.0f;
+    // level  0-10 : 2.0 1.3, .88 .59 .39 .26 .17 .11 .07 .05 .034
+    private float levelUpWaitSeconds = 20;
 
+
+private void LevelUp() {
+    Invoke("LevelUp", levelUpWaitSeconds);
+    dropDelay.curentValue = dropDelay.curentValue * levelSpeedChange;
+    audioSource.PlayOneShot(levelUpSound);
+    Debug.Log("Level up speed: " + dropDelay.curentValue);
+}
     public void Restart() {
         Stop();
         Invoke("Start", 1.5f);
         
     }
     public void Stop() {
+        CancelInvoke("LevelUp");
         CancelInvoke("FillFiller");
         System.Action<Node> cleanSocket = (node) => {
             var interactable = node.Socket.GetComponent<XRBaseInteractable>();
@@ -144,7 +157,6 @@ public class BlobGrid : MonoBehaviour
     void Start()
     {      
         audioSource = GetComponent<AudioSource>();
-
         sequencialDropFailCount = 0;
         
         _grid  = new Node[width, height, width];
@@ -181,6 +193,7 @@ public class BlobGrid : MonoBehaviour
     };
 
      Invoke("FillFiller", dropDelay.curentValue);
+     Invoke("LevelUp", levelUpWaitSeconds);
      
      dropDelay.onChanged = () => {
             CancelInvoke("FillFiller");
@@ -240,15 +253,25 @@ public class BlobGrid : MonoBehaviour
         } else {
             sequencialDropFailCount = 0;
             lighting.color = Color.white;
+            audioSource.PlayOneShot(fallSound, 1.0f);
+
         }
         Invoke("FillFiller", dropDelay.curentValue);
     }
  
 
-// Update is called once per frame
+// Update is called once per frame 
     void Update()
     {
-
+        // blinking red
+        if (sequencialDropFailCount != 0) {
+            var val = Time.time % 2.0f;
+            if (val <= 1.0f) {
+                lighting.color = new Color(1, 1.0f - val, 1.0f - val);
+            } else {
+                lighting.color = new Color(1, val - 1.0f,  val - 1.0f);
+            }
+        }
     }
 
 private void CreateBlob(Position position, Vector3 vector, bool randomColor = false) {    

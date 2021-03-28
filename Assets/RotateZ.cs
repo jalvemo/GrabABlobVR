@@ -18,7 +18,7 @@ public class RotateZ : MonoBehaviour
     void Update()
     {
         if (right && handPresence.isGrippingRight()) {
-            transform.Rotate(new Vector3(0.0f, 0.0f, 200.0f * Time.deltaTime));
+            transform.Rotate(new Vector3(0.0f, 0.0f, -200.0f * Time.deltaTime));
         }
         if (!right && handPresence.isGrippingLeft()) {
             transform.Rotate(new Vector3(0.0f, 0.0f, 200.0f * Time.deltaTime));

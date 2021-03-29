@@ -419,17 +419,17 @@ MonoBehaviour:
   SocketPrefab: {fileID: 1853522937739129937, guid: 4baabe85211306a47b71cf5b808fd5de,
     type: 3}
   lighting: {fileID: 705507994}
-  pop: {fileID: 8300000, guid: f6d4beed37a92b244bae0a1847d59b03, type: 3}
-  noFit: {fileID: 8300000, guid: 5260d238fd82c1546a30ae37be04f1d4, type: 3}
-  gameOver: {fileID: 8300000, guid: 165db8324a66c96449b1a317c13bacc7, type: 3}
-  fallSound: {fileID: 8300000, guid: f778aa1d9affacd468ba16cfc3115aff, type: 3}
-  levelUpSound: {fileID: 8300000, guid: f63ee120d3848e84c899828a206ef82a, type: 3}
   DummyKeepPrefab: {fileID: 3150867483668672948, guid: 8a50b79c070917b4fafaa12e5627a749,
     type: 3}
   DummyFallPrefab: {fileID: 2657016886547518662, guid: 68569277fb1cf8e4bb7e89dc838830e7,
     type: 3}
   DummyOutPrefab: {fileID: 7789856747982355280, guid: 34cf3ffcd6fa1494cb63afb574463cec,
     type: 3}
+  pop: {fileID: 8300000, guid: f6d4beed37a92b244bae0a1847d59b03, type: 3}
+  noFit: {fileID: 8300000, guid: 5260d238fd82c1546a30ae37be04f1d4, type: 3}
+  gameOver: {fileID: 8300000, guid: 165db8324a66c96449b1a317c13bacc7, type: 3}
+  fallSound: {fileID: 8300000, guid: f778aa1d9affacd468ba16cfc3115aff, type: 3}
+  levelUpSound: {fileID: 8300000, guid: f63ee120d3848e84c899828a206ef82a, type: 3}
   removeThresholdSelector: {fileID: 4607233771507541789}
   dropDelay: {fileID: 117966645}
   nextWidth: {fileID: 1774027633}

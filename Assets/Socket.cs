@@ -5,6 +5,16 @@ using UnityEngine.XR.Interaction.Toolkit;
 
 public class Socket : XRSocketInteractor
 {
+
+
+    public BlobGrid.Position GridPosition;
+    public Blob Blob;
+    public Color Color;
+
+    public XRBaseInteractable Interactable {
+        get { return GetComponent<XRBaseInteractable>(); }
+    }
+
     protected override void Awake()
     {
         base.Awake();

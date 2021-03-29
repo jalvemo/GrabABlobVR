@@ -48,6 +48,8 @@ big things
 ideas
 Cooperative work on the same stack/grid 2 vs 0 2 vs 2 
 
+bals get up like the marble macheene x. maybe also generates music?
+
 Mariokart boxes, you get random boxes of "things you can do" when executing combos. but can only keep 1, 2, 3 specials. 
 catch up, player behind might get better items like in marikart. (who is behind i dont know..)..
 box power could be
@@ -74,9 +76,22 @@ public class BlobGrid : MonoBehaviour
     public XRInteractionManager interactionManager;
     public GameObject BlobPrefab;
     public GameObject SocketPrefab;
-
-
     public Light lighting;
+    // Dummy prefabs. Just for getting the layers.
+    public GameObject DummyKeepPrefab;
+    public GameObject DummyFallPrefab;
+    public GameObject DummyOutPrefab;
+    public LayerMask KeepLayer() {
+        return DummyKeepPrefab.GetComponent<XRGrabInteractable>().interactionLayerMask;
+    }
+        
+    public  LayerMask FallLayer() {
+        return DummyFallPrefab.GetComponent<XRGrabInteractable>().interactionLayerMask;
+    }
+        
+    public LayerMask OutLayer() {
+        return DummyOutPrefab.GetComponent<XRGrabInteractable>().interactionLayerMask;
+    }   
     private AudioSource audioSource;
     public AudioClip pop;
     public AudioClip noFit;
@@ -84,22 +99,7 @@ public class BlobGrid : MonoBehaviour
     public AudioClip fallSound;
     public AudioClip levelUpSound;
 
-    // Dummy prefabs. Just for getting the layers.
-    public GameObject DummyKeepPrefab;
-    public GameObject DummyFallPrefab;
-    public GameObject DummyOutPrefab;
 
-    private LayerMask KeepLayer() {
-        return DummyKeepPrefab.GetComponent<XRGrabInteractable>().interactionLayerMask;
-    }
-    
-    private LayerMask FallLayer() {
-        return DummyFallPrefab.GetComponent<XRGrabInteractable>().interactionLayerMask;
-    }
-    
-    private LayerMask OutLayer() {
-        return DummyOutPrefab.GetComponent<XRGrabInteractable>().interactionLayerMask;
-    }
 
     int width = 3;
     int height = 6;
@@ -115,8 +115,8 @@ public class BlobGrid : MonoBehaviour
     public SocketSelector nextStartHeight;
 
     List<Color> colors = new List<Color> {Color.green, Color.magenta, Color.red, Color.yellow, Color.blue};
-    private Node[,,] _grid;
-    private Node[,,] _fillerGrid;
+    private Socket[,,] _grid;
+    private Socket[,,] _fillerGrid;
 
     private int fillerGridYPositionRelative = 0;
     private float levelSpeedChange = 2.0f / 3.0f;
@@ -138,18 +138,15 @@ private void LevelUp() {
     public void Stop() {
         CancelInvoke("LevelUp");
         CancelInvoke("FillFiller");
-        System.Action<Node> cleanSocket = (node) => {
-            var interactable = node.Socket.GetComponent<XRBaseInteractable>();
-            interactionManager.UnregisterInteractable(interactable);
-
-            //Destroy(node.Socket);
-            var interactor = node.Socket.GetComponent<XRSocketInteractor>();
-            node.Socket.GetComponent<XRSocketInteractor>().enableInteractions = false;
+        System.Action<Socket> cleanSocket = (socket) => {
+            interactionManager.UnregisterInteractable(socket.Interactable);
             // todo: find to reuse or actually remove theese.
+            socket.enableInteractions = false;
+            //socket.Socket.GetComponent<XRSocketInteractor>().enableInteractions = false;
         };
     
-        foreach (var node in _grid) { cleanSocket.Invoke(node); }
-        foreach (var node in _fillerGrid) { cleanSocket.Invoke(node); }
+        foreach (var socket in _grid) { cleanSocket.Invoke(socket); }
+        foreach (var socket in _fillerGrid) { cleanSocket.Invoke(socket); }
 
         //Start();
     }
@@ -159,21 +156,25 @@ private void LevelUp() {
         audioSource = GetComponent<AudioSource>();
         sequencialDropFailCount = 0;
         
-        _grid  = new Node[width, height, width];
+        _grid  = new Socket[width, height, width];
         for(int x = 0; x < width; x++) {
           for(int y = 0; y < height; y++) {
               for(int z = 0; z < width; z++) {
                   var position = new Position(x,y,z);
-                  InitNodeAt(position, GetPositionVector(position),  _grid, y < startHeight);
+                  var positionVector =  GetPositionVector(position);
+                  if (y < startHeight) {
+                    CreateBlob(position, positionVector);
+                  }
+                  InitSocketAt(position,positionVector, _grid);
                 }               
             }  
         }
-        _fillerGrid = new Node[width, 1, width];
+        _fillerGrid = new Socket[width, 1, width];
         for(int x = 0; x < width; x++) {
             int y = 0;
             for(int z = 0; z < width; z++) {
                 var position = new Position(x,y,z);
-                InitNodeAt(position, GetPositionVector(position, fillerGridYPositionRelative + height), _fillerGrid, false, false);
+                InitSocketAt(position, GetPositionVector(position, fillerGridYPositionRelative + height), _fillerGrid, false);
             }                           
         }
 
@@ -201,14 +202,14 @@ private void LevelUp() {
         };
     }
 
-    private float fillPauseDelay = 0.0f;      
+    private float _fillPauseDelay = 0.0f;      
     private int gameOverDropFailThreshhold = 2;
     private int sequencialDropFailCount = 0;
 
     void FillFiller() {
-        if (fillPauseDelay > 0.0f) {
-            Invoke("FillFiller", fillPauseDelay);
-            fillPauseDelay = 0.0f;
+        if (_fillPauseDelay > 0.0f) {
+            Invoke("FillFiller", _fillPauseDelay);
+            _fillPauseDelay = 0.0f;
             return;
         }    
     
@@ -230,12 +231,12 @@ private void LevelUp() {
         for(int x = 0; x < width; x++) {
             int y = 0;
             for(int z = 0; z < width; z++) {
-                var lowestFree = FindLowestFreeNodeOnTop(x, z); 
-                _fillerGrid[x,y,z].Blob.GetComponent<XRGrabInteractable>().interactionLayerMask = FallLayer();
+                var lowestFree = FindLowestFreeSocketOnTop(x, z); 
+                _fillerGrid[x,y,z].Blob.interactionLayerMask = FallLayer();
                 _fillerGrid[x,y,z].Blob.GetComponent<Rigidbody>().interpolation = RigidbodyInterpolation.None;                
                 _fillerGrid[x,y,z].Blob = null;
                 if (lowestFree != null ){
-                    CatchFallingBlobs(new List<Node>(){lowestFree}); 
+                    CatchFallingBlobs(new List<Socket>(){ lowestFree }); 
                 } else {
                     failed = true;
                 }
@@ -275,85 +276,63 @@ private void LevelUp() {
     }
 
 private void CreateBlob(Position position, Vector3 vector, bool randomColor = false) {    
-    GameObject blob = Instantiate(BlobPrefab);
+    Blob blob = Instantiate(BlobPrefab).GetComponent<Blob>();
     blob.name = "blob " + position.ToString();
     blob.transform.SetPositionAndRotation(vector, new Quaternion()); 
     var color = randomColor ? colors[Random.Range(0, colors.Count)] : colors[(position.X + position.Y + position.Z) % (colors.Count - 1)];    
-    blob.GetComponent<Renderer> ().material.color = color;
+    blob.Color = color;
 }
 private Vector3 GetPositionVector(Position position, int yStart = 0) {
     float offset = width * distance / 2;
     return new Vector3(position.X * distance - offset, (position.Y + yStart)* distance + 0.5f, position.Z * distance - offset);
 }
 
-    private void InitNodeAt(Position position, Vector3 vector, Node[,,] grid, bool addBlob, bool connectionListener = true)
+    private void InitSocketAt(Position position, Vector3 vector, Socket[,,] grid, bool connectionListener = true)
     {   
-        
-        if (addBlob) { // todo break out
-            CreateBlob(position, vector);
-        }
-
-        GameObject socket = Instantiate(SocketPrefab);
+        Socket socket = Instantiate(SocketPrefab).GetComponent<Socket>();
         socket.name = "socket " + position.ToString();       
+        socket.transform.SetPositionAndRotation(vector, new Quaternion()); // need game object?
+    
+        socket.GridPosition = new Position(position.X, position.Y, position.Z);
+        socket.Color = Color.white; // just something not used
+    
+        grid[position.X, position.Y, position.Z] = socket;
 
-        socket.transform.SetPositionAndRotation(vector, new Quaternion()); 
-
-        var node = new Node {
-            Blob = null, // will be blob when connecting to socket
-            Socket = socket,
-            Position = new Position(position.X, position.Y, position.Z),
-            Color = Color.white // just something not used
-            };
-
-        var socketInteractor = socket.GetComponent<Socket>();
-
-        grid[position.X, position.Y, position.Z] = node;
-
-        socketInteractor.onSelectEntered.AddListener((_) => { // have a queue for multiple trigger at the same time ?
-            var droppedBlob = _.gameObject;
-            node.Blob = droppedBlob;
-            node.Color = droppedBlob.GetComponent<Renderer> ().material.color;
+        socket.onSelectEntered.AddListener((_) => { // have a queue for multiple trigger at the same time ?
+            var droppedBlob = _.GetComponent<Blob>();
+            if (droppedBlob == null) { // it was not a blob
+                return;
+            }
+            socket.Blob = droppedBlob;
+            socket.Color = droppedBlob.Color;
 
             //droppedBlob.GetComponent<Rigidbody>().interpolation = RigidbodyInterpolation.Interpolate;
             if (connectionListener) {
-                StartCoroutine(checkForConnctedNodes(node, 0.1f)); //0.1 allows some time to drop 2 connected blobs
+                StartCoroutine(checkForConnctedSocketDrop(socket, 0.1f)); //0.1 allows some time to drop 2 connected blobs
             }
 
         });
 
-        socketInteractor.onSelectExited.AddListener((_) => { 
-            node.Blob = null;
+        socket.onSelectExited.AddListener((_) => { // move to socket..
+            socket.Blob = null;
         });
 
 
     }
-    private IEnumerator checkForConnctedNodes (Node node, float t) {
+    private IEnumerator checkForConnctedSocketDrop(Socket socket, float t) {
         yield return new WaitForSeconds(t);
         
-        var connectedNodes = ConnectedNodes(node);        
-        if (connectedNodes.Count() >= removeThresholdSelector.GetInt()) {
-            Debug.Log("connected: " + connectedNodes.Count + ", color: " + node.Color);
-            StartCoroutine(DropOutInSeconds(connectedNodes, 0.5f));
+        var connectedSockets = ConnectedSockets(socket);        
+        if (connectedSockets.Count() >= removeThresholdSelector.GetInt()) {
+            Debug.Log("connected: " + connectedSockets.Count + ", color: " + socket.Color);
+            StartCoroutine(DropOutInSeconds(connectedSockets, 0.5f));
         }
         
 
     }
-    private IEnumerator FallAboveIn(Node node, float t) {
-        yield return new WaitForSeconds(t);
-        FallAbove(node);
-    }
 
-    private Node FindLowestFreeNode(int x, int z) {
-        for(int i = 0; i < height ; i++) {
-            if (_grid[x,i,z].Blob == null)
-            {
-                Debug.Log("lowest free: " + _grid[x,i,z].Position);
-                return _grid[x,i,z];
-            }
-        }
-        return null;
-    }
-    private Node FindLowestFreeNodeOnTop(int x, int z) {
+    // where new falling blobs will fall to 
+    private Socket FindLowestFreeSocketOnTop(int x, int z) {
         if (_grid[x, height - 1, z].Blob != null) { // top
             return null;
         }
@@ -367,179 +346,155 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
         return _grid[x, 0, z]; // bottom
     }
 
-    private List<Node> GetAboveInOrder(Node node) {
-        var above = new List<Node>();
-        if (node.Position.Y == height - 1) {
+    private List<Socket> GetAboveOrderedLowestFirst(Socket socket) {
+        var above = new List<Socket>();
+        if (socket.GridPosition.Y == height - 1) {
             return above;
         }
-        for( int i = node.Position.Y + 1; i < height ; i++) {
-            above.Add(_grid[node.Position.X, i , node.Position.Z]);
+        for( int i = socket.GridPosition.Y + 1; i < height ; i++) {
+            above.Add(_grid[socket.GridPosition.X, i , socket.GridPosition.Z]);
         }
         return above;
     } 
 
-    private IEnumerator BlobDropAudioVisual(GameObject blob, float t) {
+
+    private IEnumerator BlobDropAudioVisual(Blob blob, float t) {
         yield return new WaitForSeconds(t);
-        blob.transform.localScale = blob.transform.localScale * 0.7f;
-        var material = blob.GetComponent<Renderer> ().material;
-        material.color = Color.Lerp(material.color, Color.black, 0.8f);
-        AudioSource.PlayClipAtPoint(pop, blob.transform.position);
+        blob.SetDropOutVisual();
+        audioSource.PlayOneShot(pop);
 
     }
-    private IEnumerator DropOutInSeconds(List<Node> nodes, float t)
+
+    private IEnumerator DropOutInSeconds(List<Socket> sockets, float t)
     {
-        
-        var rigidBodies = nodes.Select(node => node.Blob.GetComponent<Rigidbody>()).ToList();
-        var blobGrabInteractables = nodes.Select(node => node.Blob.GetComponent<XRGrabInteractable>()).ToList();
+        var blobs = sockets.Select(socket => socket.Blob).ToList();    
 
         // scale mark as gone 
-        for(int i = 0; i < nodes.Count; i++) {
-            StartCoroutine(BlobDropAudioVisual(nodes[i].Blob, i * t / nodes.Count));
-            nodes[i].Blob = null; // (2) todo,might be dangerous this early 
+        for(int i = 0; i < sockets.Count; i++) {
+            StartCoroutine(BlobDropAudioVisual(sockets[i].Blob, i * t / sockets.Count));
+            //var blob =  sockets[i].Blob;
+            //StartCoroutine(i * t / sockets.Count,
+            //    () => {
+            //        blob.SetDropOutVisual();
+            //        audioSource.PlayOneShot(pop);
+            //    }
+            //);
+            sockets[i].Blob = null; // (2) todo,might be dangerous this early 
         }
 
-        fillPauseDelay = t; // pause filling while falling..
+        _fillPauseDelay = t; // pause filling while falling..
     
 
         //wait
         yield return new WaitForSeconds(t);
         
         // drop out
-        foreach (var blobGrabInteractable in blobGrabInteractables) {
-            blobGrabInteractable.interactionLayerMask = OutLayer();
+        foreach (var blob in blobs) {
+            blob.interactionLayerMask = OutLayer();
         }
         // push a bit to not stuck while falling // todo maybe remove delay?
-        StartCoroutine(ForceSoon(rigidBodies, 0.1f));
+        StartCoroutine(ForceSoon(blobs, 0.1f));
 
 
         //// fall above logic 
-        //(1) lowest nodes with the same x z cordinates (lowest nodes dropping out), there should be a nicer way.... 
-        var nodesByXZ = new Dictionary<(int, int), Node>();
-        foreach (var n in nodes.OrderBy(n => n.Position.Y).ToList())
+        //(1) lowest sockets with the same x z cordinate (lowest socket dropping out will start catching falling blobs), there should be a nicer way.... 
+        var socketsByXZ = new Dictionary<(int, int), Socket>();
+        foreach (var s in sockets.OrderBy(s => s.GridPosition.Y).ToList())
         {            
-            var key = (n.Position.X, n.Position.Z);
-            nodesByXZ[key] = nodesByXZ.ContainsKey(key) ? nodesByXZ[key] : n;
+            var key = (s.GridPosition.X, s.GridPosition.Z);
+            socketsByXZ[key] = socketsByXZ.ContainsKey(key) ? socketsByXZ[key] : s;
         }
-        //var nodesByXZPosition = nodes
+        //var socketsByXZPosition = sockets
         //    .GroupBy( n => (n.Position.X, n.Position.Z))
         //    .OrderByDescending((key, n) => n.Position.Y);
-        foreach(var bottonNode in nodesByXZ.Values) 
+        foreach(var bottonSocket in socketsByXZ.Values) 
         {
-            FallAbove(bottonNode);
+            FallAbove(bottonSocket);
         }
     }
-    private void FallAbove(Node bottonNode) {
-          // Release falling blobs 
-            var aboveNodes = GetAboveInOrder(bottonNode).ToList();
-            var fallingNodes = aboveNodes.Where(n => n.Blob != null).ToList();
-            var fallingBlobs = fallingNodes.Select(n => n.Blob).ToList();
+    private void FallAbove(Socket bottomCatchingSocket) {
+        // Release falling blobs 
+        var aboveSockets = GetAboveOrderedLowestFirst(bottomCatchingSocket).ToList();
+        var socketsWithFallingBlobs = aboveSockets.Where(s => s.Blob != null).ToList();
+        var fallingBlobs = socketsWithFallingBlobs.Select(s => s.Blob).ToList();
 
 
-            //catch falling blob in bottom
-            Debug.Log("falling blobs " + fallingBlobs.Count);
+        //catch falling blob in bottom
+        Debug.Log("falling blobs " + fallingBlobs.Count);
 
-            if (fallingBlobs.Count() == 0) {
-                return;
-            }
+        if (fallingBlobs.Count() == 0) {
+            return;
+        }
 
-            foreach (var fallingBlob in fallingBlobs)
-            {
-                fallingBlob.GetComponent<XRGrabInteractable>().interactionLayerMask = FallLayer();
-                fallingBlob.GetComponent<Rigidbody>().interpolation = RigidbodyInterpolation.None;                
+        foreach (var fallingBlob in fallingBlobs)
+        {
+            fallingBlob.interactionLayerMask = FallLayer();
+            fallingBlob.Rigidbody.interpolation = RigidbodyInterpolation.None;                            
+        }
+        foreach (var fallingSocket in socketsWithFallingBlobs)
+        {
+            fallingSocket.Blob = null; //might not be needed?
+        }
 
-                
-            }
-            foreach (var fallingNode in fallingNodes)
-            {
-                fallingNode.Blob = null; //might not be needed?
-            }
+        var catchingSockets = new Socket[]{bottomCatchingSocket}.Concat(aboveSockets.Take(socketsWithFallingBlobs.Count - 1)).ToList();
 
-            var bottonSocketInteractor = bottonNode.Socket.GetComponent<XRSocketInteractor>();
-
-            var catchingNodes = new Node[]{bottonNode}.Concat(aboveNodes.Take(fallingNodes.Count - 1)).ToList();
-
-            CatchFallingBlobs(catchingNodes);
+        CatchFallingBlobs(catchingSockets);
     }
 
-    // catchingNodes: ordered list of nodes with catching sockets.
-    private void CatchFallingBlobs(List<Node> catchingNodes) { // todo: what if falling is blocked?
-        if (catchingNodes.Count == 0) {
+    // catchingSockets: ordered list of sockets with catching falling blobs.
+    private void CatchFallingBlobs(List<Socket> catchingSockets) { // todo: what if falling is blocked?
+        if (catchingSockets.Count == 0) {
             return;
         }
     
-        var socketInteractor = catchingNodes.First().Socket.GetComponent<XRSocketInteractor>();
-        socketInteractor.interactionLayerMask = FallLayer();
+        var nextCatchingSocket = catchingSockets.First();
+        nextCatchingSocket.interactionLayerMask = FallLayer();
 
-        UnityAction<XRBaseInteractable> action = null;
-            action = (_) => {
-                socketInteractor.onSelectEntered.RemoveListener(action);
+        UnityAction<XRBaseInteractable> catchFallingBlob = null;
+            catchFallingBlob = (_) => {
+                var catchedBlob = _.GetComponent<Blob>();
+                if (catchedBlob == null) {
+                    Debug.Log("Wops - Tried to catch falling blob, but was no blob: " + _);
+                    return;
+                }
 
+                nextCatchingSocket.onSelectEntered.RemoveListener(catchFallingBlob);
                 // catch regular blobs 
-                socketInteractor.interactionLayerMask = KeepLayer();
+                nextCatchingSocket.interactionLayerMask = KeepLayer();
                 // make the catch blob not falling. 
-                _.GetComponent<XRGrabInteractable>().interactionLayerMask = KeepLayer();
-                /// todo take list of blob, interactor pairs, call itself here with next pair here to catch the rest.
-                CatchFallingBlobs(catchingNodes.Skip(1).ToList());
-            
+
+                catchedBlob.interactionLayerMask = KeepLayer();
+                CatchFallingBlobs(catchingSockets.Skip(1).ToList());
             };
-            socketInteractor.onSelectEntered.AddListener(action);
-
+            nextCatchingSocket.onSelectEntered.AddListener(catchFallingBlob);
     }
 
-    private IEnumerator DropAbove(List<Node> startNodes, float t) {
-        yield return new WaitForSeconds(t);
-        /*
-        var aboveNodes = GetAboveInOrder(startNode);
-        var fallingBlobs = aboveNodes.Where(node => node.Blob != null).Select(node => node.Blob);
-         // make all above fall
-        foreach (var blob in fallingBlobs)  {
-              blob.GetComponent<XRGrabInteractable>().interactionLayerMask = LayerMask.NameToLayer(FALLING_LAYER_NAME);
-        }
-         
-        
 
-        var socketInterator = startNode.Socket.GetComponent<Socket>();
-        UnityAction<XRBaseInteractable> action = null;
-        action = (_) => {
-            socketInterator.onSelectEntered.RemoveListener(action);
-            foreach (var blob in fallingBlobs)  {
-                blob.GetComponent<XRGrabInteractable>().interactionLayerMask = LayerMask.NameToLayer(KEEP_LAYER_NAME);
-            }
-            startNode.Socket.GetComponent<XRSocketInteractor>().interactionLayerMask = LayerMask.NameToLayer(KEEP_LAYER_NAME);
-            
-        };
-        socketInterator.onSelectEntered.AddListener(action);
-
-        startNode.Socket.GetComponent<XRSocketInteractor>().interactionLayerMask = LayerMask.NameToLayer(FALLING_LAYER_NAME);
-       */
-
-    }
-
-    private IEnumerator ForceSoon(List<Rigidbody> rigidBodies, float t)
+    private IEnumerator ForceSoon(List<Blob> blobs, float t)
     {
         yield return new WaitForSeconds(t);
-        foreach (var rigidBody in rigidBodies)
+        foreach (var blob in blobs)
         {
-            rigidBody.MovePosition(rigidBody.position + new Vector3(0.05f, 0.05f, 0.05f));
+            blob.Rigidbody.MovePosition(blob.Rigidbody.position + new Vector3(0.05f, 0.05f, 0.05f));
             //rigidBody.AddForce(new Vector3(10.05f, 10.05f, 10.05f));
         }
     }
 
-    private List<Node> ConnectedNodes(Node node, HashSet<Node> visited = null) {
-        visited = visited == null ? new HashSet<Node>() : visited;
-        visited.Add(node);
-        var toCheck = NeighboursFor(node)
-            .Where(n => n.Color == node.Color)
-            .Where(n => n.Blob != null)
-            .Where(n => !visited.Contains(n));
+    private List<Socket> ConnectedSockets(Socket socket, HashSet<Socket> visited = null) {
+        visited = visited == null ? new HashSet<Socket>() : visited;
+        visited.Add(socket);
+        var toCheck = NeighboursFor(socket)
+            .Where(s => s.Color == socket.Color)
+            .Where(s => s.Blob != null)
+            .Where(s => !visited.Contains(s));
         //Debug.Log("toCheck: " + toCheck.Count());
 
-        var result = new[] { node }.Concat(toCheck.SelectMany(nextNode => ConnectedNodes(nextNode, visited)));
+        var result = new[] { socket }.Concat(toCheck.SelectMany(nextSocket => ConnectedSockets(nextSocket, visited)));
         return result.ToList();
     } 
 
     private bool PositionInGrid(Position p) => p.X >= 0 && p.Y >= 0 && p.Z >= 0 && p.X < width && p.Y < height && p.Z < width;
-     private Node NodeAt(Position p) {
+     private Socket SocketAt(Position p) {
         if (PositionInGrid(p)) {
             return _grid[p.X,p.Y,p.Z];
         } else {
@@ -547,8 +502,8 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
         }
     }
     
-    private List<Node> NeighboursFor(Node node) {
-        return directions.Select(direction => NodeAt(node.Position + direction)).Where(neighbour => neighbour != null).ToList();
+    private List<Socket> NeighboursFor(Socket socket) {
+        return directions.Select(direction => SocketAt(socket.GridPosition + direction)).Where(neighbour => neighbour != null).ToList();
     }
    List<Position> directions = new List<Position> {
         new Position(1, 0, 0),
@@ -559,14 +514,8 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
         new Position(0, 0, -1),
     };
 
-    private class Node {
-        public Position Position;
-        public GameObject Blob;
-        public GameObject Socket;
-        public Color Color;
-    }
     
-    class Position {
+    public class Position {
         // Position NOT_IN_GRID = new Position(-100,-100,-100);
         public Position(int x, int y, int z) {X = x; Y = y; Z = z;} 
         
@@ -606,6 +555,14 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
             return hash;
         }
 
+    }
+
+    private void StartCoroutine(float delayInSeconds, System.Action action) {
+        StartCoroutine(DelayAction(delayInSeconds, action));
+    }
+    private IEnumerator DelayAction(float delayInSeconds, System.Action action) {
+        yield return new WaitForSeconds(delayInSeconds);
+        action.Invoke();
     }
 
 }

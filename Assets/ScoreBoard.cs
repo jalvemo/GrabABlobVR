@@ -2,9 +2,12 @@
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using System.Linq;
+
 
 public class ScoreBoard : MonoBehaviour
 {
+    //scoring inspo https://puyonexus.com/wiki/Scoring
     private TextMeshPro _text;
     // Start is called before the first frame update
     
@@ -34,7 +37,7 @@ public class ScoreBoard : MonoBehaviour
     }
     public void LevelUp(int level = 1) {
         Level += level;
-        message = "level up, fall speed increesed";
+        message = "Speed increesed";
         UpdateText();
     }
 
@@ -44,10 +47,41 @@ public class ScoreBoard : MonoBehaviour
         UpdateText();
     }
 
+
+    private List<List<Blob>> _combo = new List<List<Blob>>();
+    private Dictionary<int, List<List<Blob>>> _comboGroupedBySize;
+
+    public void ApplyScore() {
+        var blobCount = _combo.Sum(_ => _.Count);
+        var scoreToAd = blobCount * _combo.Count;
+        _combo = new List<List<Blob>>();
+        Score += scoreToAd;
+        message = "";
+        UpdateText();
+    }
+    public void AddScore(List<Blob> blobs) {
+        _combo.Add(blobs);
+
+        //_comboGroupedBySize = _combo
+        //    .GroupBy(_ => _.Count)
+        //    .ToDictionary(_ => _.Key, _ => _.ToList());
+        
+        // todo factor in level in score 
+        var blobCount = _combo.Sum(_ => _.Count);
+        var scoreToAdd = blobCount * _combo.Count;
+
+        message = "Scoreing " + blobCount;
+        if (_combo.Count() > 1) {
+             message += " X" + _combo.Count() + " Combo = " + scoreToAdd;
+        }
+        UpdateText();
+
+    }
     public void ResetBoard() {
         Level = 0;
         Score = 0;
         message = "";
+        _combo = new List<List<Blob>>();
         UpdateText();
     }
 }

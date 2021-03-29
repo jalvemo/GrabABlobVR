@@ -18,6 +18,7 @@ To-do list:
 bugs
 * when blobs fall fast they fall out of teir sockets., i removed interpolate solves it but that is choppy....look at collition detection mode?
 * when falling blob miss the socket the socket is lost waiting for falling blob. 
+* all blobs dont go in to a combo if one blabb is falling from high. connecting blobs disapear before far falling blob connects. 
 
 small thing:
 
@@ -213,6 +214,7 @@ private void LevelUp() {
         if (_fillPauseDelay > 0.0f) {
             Invoke("FillFiller", _fillPauseDelay);
             _fillPauseDelay = 0.0f;
+            ScoreBoard.ApplyScore();
             return;
         }    
     
@@ -387,6 +389,8 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
 
         _fillPauseDelay = t; // pause filling while falling..
     
+        // score
+        ScoreBoard.AddScore(blobs); 
 
         //wait
         yield return new WaitForSeconds(t);
@@ -396,8 +400,6 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
             blob.interactionLayerMask = OutLayer();
         }
 
-        // score
-            ScoreBoard.AddScore(sockets.Count); 
 
         // push a bit to not stuck while falling // todo maybe remove delay?
         StartCoroutine(ForceSoon(blobs, 0.1f));

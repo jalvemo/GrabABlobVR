@@ -77,6 +77,7 @@ public class BlobGrid : MonoBehaviour
     public GameObject BlobPrefab;
     public GameObject SocketPrefab;
     public Light lighting;
+    public ScoreBoard ScoreBoard;
     // Dummy prefabs. Just for getting the layers.
     public GameObject DummyKeepPrefab;
     public GameObject DummyFallPrefab;
@@ -129,6 +130,7 @@ private void LevelUp() {
     dropDelay.curentValue = dropDelay.curentValue * levelSpeedChange;
     audioSource.PlayOneShot(levelUpSound);
     Debug.Log("Level up speed: " + dropDelay.curentValue);
+    ScoreBoard.LevelUp();
 }
     public void Restart() {
         Stop();
@@ -155,7 +157,8 @@ private void LevelUp() {
     {      
         audioSource = GetComponent<AudioSource>();
         sequencialDropFailCount = 0;
-        
+        ScoreBoard.ResetBoard();
+
         _grid  = new Socket[width, height, width];
         for(int x = 0; x < width; x++) {
           for(int y = 0; y < height; y++) {
@@ -392,9 +395,12 @@ private Vector3 GetPositionVector(Position position, int yStart = 0) {
         foreach (var blob in blobs) {
             blob.interactionLayerMask = OutLayer();
         }
+
+        // score
+            ScoreBoard.AddScore(sockets.Count); 
+
         // push a bit to not stuck while falling // todo maybe remove delay?
         StartCoroutine(ForceSoon(blobs, 0.1f));
-
 
         //// fall above logic 
         //(1) lowest sockets with the same x z cordinate (lowest socket dropping out will start catching falling blobs), there should be a nicer way.... 

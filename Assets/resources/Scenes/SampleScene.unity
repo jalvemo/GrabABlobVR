@@ -419,6 +419,7 @@ MonoBehaviour:
   SocketPrefab: {fileID: 1853522937739129937, guid: 4baabe85211306a47b71cf5b808fd5de,
     type: 3}
   lighting: {fileID: 705507994}
+  ScoreBoard: {fileID: 1050366299}
   DummyKeepPrefab: {fileID: 3150867483668672948, guid: 8a50b79c070917b4fafaa12e5627a749,
     type: 3}
   DummyFallPrefab: {fileID: 2657016886547518662, guid: 68569277fb1cf8e4bb7e89dc838830e7,
@@ -6428,6 +6429,18 @@ Transform:
   m_Father: {fileID: 1721363946}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1050366299 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 2367681599531383856, guid: 0cf0884e55de59f42aca0d81616fb5cb,
+    type: 3}
+  m_PrefabInstance: {fileID: 2367681600311831915}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d822d5b7362bec748beee1db547d74cf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!4 &1086967657 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 880970725214738984, guid: c60edd51c065ceb46b345849a03bc106,
@@ -11119,6 +11132,75 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 04611bf69f9790841afa574ae3220720, type: 3}
+--- !u!1001 &2367681600311831915
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 2367681599531383857, guid: 0cf0884e55de59f42aca0d81616fb5cb,
+        type: 3}
+      propertyPath: m_Name
+      value: Score board
+      objectReference: {fileID: 0}
+    - target: {fileID: 2367681599531383863, guid: 0cf0884e55de59f42aca0d81616fb5cb,
+        type: 3}
+      propertyPath: m_RootOrder
+      value: 18
+      objectReference: {fileID: 0}
+    - target: {fileID: 2367681599531383863, guid: 0cf0884e55de59f42aca0d81616fb5cb,
+        type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -2.7
+      objectReference: {fileID: 0}
+    - target: {fileID: 2367681599531383863, guid: 0cf0884e55de59f42aca0d81616fb5cb,
+        type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.04
+      objectReference: {fileID: 0}
+    - target: {fileID: 2367681599531383863, guid: 0cf0884e55de59f42aca0d81616fb5cb,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 2.71
+      objectReference: {fileID: 0}
+    - target: {fileID: 2367681599531383863, guid: 0cf0884e55de59f42aca0d81616fb5cb,
+        type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2367681599531383863, guid: 0cf0884e55de59f42aca0d81616fb5cb,
+        type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2367681599531383863, guid: 0cf0884e55de59f42aca0d81616fb5cb,
+        type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2367681599531383863, guid: 0cf0884e55de59f42aca0d81616fb5cb,
+        type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2367681599531383863, guid: 0cf0884e55de59f42aca0d81616fb5cb,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2367681599531383863, guid: 0cf0884e55de59f42aca0d81616fb5cb,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2367681599531383863, guid: 0cf0884e55de59f42aca0d81616fb5cb,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 0cf0884e55de59f42aca0d81616fb5cb, type: 3}
 --- !u!114 &4607233771507541789 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 4501138338682797838, guid: 38226e5adf3dc3646a9f0c3b3d7671aa,

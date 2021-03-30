@@ -33,6 +33,7 @@ bigger things
 * hearts in blobs, release to gain health 
 * characta inspo:
     * https://joslin.artstation.com/projects/KgdLX
+* Score should take level/fall-rate in to account. It is a lot easier to do combos in the begining. 
 
 improve working version:
 * background sound
@@ -70,6 +71,18 @@ box power could be
 * AI controllers sabotaging.
 
 handicap worse player need lesser combos for powerups 
+
+
+==AI==
+* identify clusters of blobs organize them by color 
+* Find first move(s) that generate a fall at a rate. If 
+* Find move generate fall, and try to make another move first that will generate combo.
+
+
+Dificulty couold be
+ * Rate of each check, how nammy chacks of each per seccond.
+ * Max move rate. like  2 moves / 2 secconds
+ * Arm speed
 
 */
 public class BlobGrid : MonoBehaviour
@@ -125,14 +138,13 @@ public class BlobGrid : MonoBehaviour
     // level  0-10 : 2.0 1.3, .88 .59 .39 .26 .17 .11 .07 .05 .034
     private float levelUpWaitSeconds = 20;
 
-
-private void LevelUp() {
-    Invoke("LevelUp", levelUpWaitSeconds);
-    dropDelay.curentValue = dropDelay.curentValue * levelSpeedChange;
-    audioSource.PlayOneShot(levelUpSound);
-    Debug.Log("Level up speed: " + dropDelay.curentValue);
-    ScoreBoard.LevelUp();
-}
+    private void LevelUp() {
+        Invoke("LevelUp", levelUpWaitSeconds);
+        dropDelay.curentValue = dropDelay.curentValue * levelSpeedChange;
+        audioSource.PlayOneShot(levelUpSound);
+        Debug.Log("Level up speed: " + dropDelay.curentValue);
+        ScoreBoard.LevelUp();
+    }
     public void Restart() {
         Stop();
         Invoke("Start", 1.5f);
@@ -147,7 +159,7 @@ private void LevelUp() {
             socket.enableInteractions = false;
             //socket.Socket.GetComponent<XRSocketInteractor>().enableInteractions = false;
         };
-    
+
         foreach (var socket in _grid) { cleanSocket.Invoke(socket); }
         foreach (var socket in _fillerGrid) { cleanSocket.Invoke(socket); }
 
@@ -162,14 +174,14 @@ private void LevelUp() {
 
         _grid  = new Socket[width, height, width];
         for(int x = 0; x < width; x++) {
-          for(int y = 0; y < height; y++) {
-              for(int z = 0; z < width; z++) {
-                  var position = new Position(x,y,z);
-                  var positionVector =  GetPositionVector(position);
-                  if (y < startHeight) {
+            for(int y = 0; y < height; y++) {
+                for(int z = 0; z < width; z++) {
+                    var position = new Position(x,y,z);
+                    var positionVector =  GetPositionVector(position);
+                    if (y < startHeight) {
                     CreateBlob(position, positionVector);
-                  }
-                  InitSocketAt(position,positionVector, _grid);
+                    }
+                    InitSocketAt(position,positionVector, _grid);
                 }               
             }  
         }
@@ -197,10 +209,10 @@ private void LevelUp() {
         Restart();
     };
 
-     Invoke("FillFiller", dropDelay.curentValue);
-     Invoke("LevelUp", levelUpWaitSeconds);
-     
-     dropDelay.onChanged = () => {
+        Invoke("FillFiller", dropDelay.curentValue);
+        Invoke("LevelUp", levelUpWaitSeconds);
+        
+        dropDelay.onChanged = () => {
             CancelInvoke("FillFiller");
             Invoke("FillFiller", dropDelay.curentValue);
         };
@@ -217,7 +229,7 @@ private void LevelUp() {
             ScoreBoard.ApplyScore();
             return;
         }    
-    
+
         for(int x = 0; x < width; x++) {
             int y = 0;
             for(int z = 0; z < width; z++) {
@@ -264,9 +276,9 @@ private void LevelUp() {
         }
         Invoke("FillFiller", dropDelay.curentValue);
     }
- 
 
-// Update is called once per frame 
+
+    // Update is called once per frame 
     void Update()
     {
         // blinking red
@@ -280,16 +292,16 @@ private void LevelUp() {
         }
     }
 
-private void CreateBlob(Position position, Vector3 vector, bool randomColor = false) {    
-    Blob blob = Instantiate(BlobPrefab).GetComponent<Blob>();
-    blob.name = "blob " + position.ToString();
-    blob.transform.SetPositionAndRotation(vector, new Quaternion()); 
-    var color = randomColor ? colors[Random.Range(0, colors.Count)] : colors[(position.X + position.Y + position.Z) % (colors.Count - 1)];    
-    blob.Color = color;
-}
-private Vector3 GetPositionVector(Position position, int yStart = 0) {
-    float offset = width * distance / 2;
-    return new Vector3(position.X * distance - offset, (position.Y + yStart)* distance + 0.5f, position.Z * distance - offset);
+    private void CreateBlob(Position position, Vector3 vector, bool randomColor = false) {    
+        Blob blob = Instantiate(BlobPrefab).GetComponent<Blob>();
+        blob.name = "blob " + position.ToString();
+        blob.transform.SetPositionAndRotation(vector, new Quaternion()); 
+        var color = randomColor ? colors[Random.Range(0, colors.Count)] : colors[(position.X + position.Y + position.Z) % (colors.Count - 1)];    
+        blob.Color = color;
+    }
+    private Vector3 GetPositionVector(Position position, int yStart = 0) {
+        float offset = width * distance / 2;
+        return new Vector3(position.X * distance - offset, (position.Y + yStart)* distance + 0.5f, position.Z * distance - offset);
 }
 
     private void InitSocketAt(Position position, Vector3 vector, Socket[,,] grid, bool connectionListener = true)

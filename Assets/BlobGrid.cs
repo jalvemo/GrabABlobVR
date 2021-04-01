@@ -93,25 +93,7 @@ public class BlobGrid : MonoBehaviour
     public GameObject AIHandPrefab;
     public Light lighting;
     public ScoreBoard ScoreBoard;
-    // Dummy prefabs. Just for getting the layers.
-    public GameObject DummyKeepPrefab;
-    public GameObject DummyFallPrefab;
-    public GameObject DummyOutPrefab;
-    public LayerMask KeepLayer() {
-        return DummyKeepPrefab.GetComponent<XRGrabInteractable>().interactionLayerMask;
-    }
-        
-    public  LayerMask FallLayer() {
-        return DummyFallPrefab.GetComponent<XRGrabInteractable>().interactionLayerMask;
-    }
-        
-    public LayerMask OutLayer() {
-        return DummyOutPrefab.GetComponent<XRGrabInteractable>().interactionLayerMask;
-    }   
-
-    public enum Layer {KEEP, Fall, OUT}
-    public static Dictionary<Layer, LayerMask> layers = new Dictionary<Layer, LayerMask>();
-
+    
     private AudioSource audioSource;
     public AudioClip pop;
     public AudioClip noFit;
@@ -176,14 +158,14 @@ public class BlobGrid : MonoBehaviour
     private Blob AIPickUp(Position position) {
         var socket = SocketAt(position);
         var blob = socket.Blob;
-        blob.interactionLayerMask = OutLayer();
+        blob.interactionLayerMask = Layers.OUT;
         //socket.Blob = null;
         //StartCoroutine(0.1f, () => blob.Rigidbody.MovePosition(new Vector3(0,10,0)));       
         return blob;
     }
     public void AIPlace(Blob blob, Position position) {
         blob.Rigidbody.MovePosition(_grid[position.X, position.Y, position.Z].transform.position);
-        blob.interactionLayerMask = KeepLayer();
+        blob.interactionLayerMask = Layers.KEEP;
     }
 
     private void AIMove() {
@@ -201,12 +183,6 @@ public class BlobGrid : MonoBehaviour
     void Start()
     {   
         _ais.Add(new AI(this, AIHandPrefab));
-
-        if (layers.Count == 0) {
-            layers[Layer.KEEP] = KeepLayer();
-            layers[Layer.OUT] = OutLayer();
-            layers[Layer.Fall] = FallLayer();
-        }
 
         //StartCoroutine(3.0f, () => AIMove());   
 
@@ -293,7 +269,7 @@ public class BlobGrid : MonoBehaviour
             int y = 0;
             for(int z = 0; z < width; z++) {
                 var lowestFree = FindLowestFreeSocketOnTop(x, z); 
-                _fillerGrid[x,y,z].Blob.interactionLayerMask = FallLayer();             
+                _fillerGrid[x,y,z].Blob.interactionLayerMask = Layers.FALL;             
                 _fillerGrid[x,y,z].Blob = null;
                 if (lowestFree != null ){
                     CatchFallingBlobs(new List<Socket>(){ lowestFree }); 
@@ -452,7 +428,7 @@ public class BlobGrid : MonoBehaviour
         
         // drop out
         foreach (var blob in blobs) {
-            blob.interactionLayerMask = OutLayer();
+            blob.interactionLayerMask = Layers.OUT;
         }
 
 
@@ -496,7 +472,7 @@ public class BlobGrid : MonoBehaviour
 
         foreach (var fallingBlob in fallingBlobs)
         {
-            fallingBlob.interactionLayerMask = FallLayer();                          
+            fallingBlob.interactionLayerMask = Layers.FALL;                          
         }
         foreach (var fallingSocket in socketsWithFallingBlobs)
         {
@@ -515,7 +491,7 @@ public class BlobGrid : MonoBehaviour
         }
     
         var nextCatchingSocket = catchingSockets.First();
-        nextCatchingSocket.interactionLayerMask = FallLayer();
+        nextCatchingSocket.interactionLayerMask = Layers.FALL;
 
         UnityAction<XRBaseInteractable> catchFallingBlob = null;
             catchFallingBlob = (_) => {
@@ -527,10 +503,10 @@ public class BlobGrid : MonoBehaviour
 
                 nextCatchingSocket.onSelectEntered.RemoveListener(catchFallingBlob);
                 // catch regular blobs 
-                nextCatchingSocket.interactionLayerMask = KeepLayer();
+                    nextCatchingSocket.interactionLayerMask = Layers.KEEP;
                 // make the catch blob not falling. 
 
-                catchedBlob.interactionLayerMask = KeepLayer();
+                catchedBlob.interactionLayerMask = Layers.KEEP;
                 CatchFallingBlobs(catchingSockets.Skip(1).ToList());
             };
             nextCatchingSocket.onSelectEntered.AddListener(catchFallingBlob);

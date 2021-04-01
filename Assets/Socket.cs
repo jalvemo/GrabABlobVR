@@ -9,7 +9,7 @@ public class Socket : XRSocketInteractor
 
     public BlobGrid.Position GridPosition;
     public Blob Blob;
-    public Color Color;
+    public bool DropCheckActive;
 
     public XRBaseInteractable Interactable {
         get { return GetComponent<XRBaseInteractable>(); }

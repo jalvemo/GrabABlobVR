@@ -90,6 +90,7 @@ public class BlobGrid : MonoBehaviour
     public XRInteractionManager interactionManager;
     public GameObject BlobPrefab;
     public GameObject SocketPrefab;
+    public GameObject AIHandPrefab;
     public Light lighting;
     public ScoreBoard ScoreBoard;
     // Dummy prefabs. Just for getting the layers.
@@ -107,6 +108,10 @@ public class BlobGrid : MonoBehaviour
     public LayerMask OutLayer() {
         return DummyOutPrefab.GetComponent<XRGrabInteractable>().interactionLayerMask;
     }   
+
+    public enum Layer {KEEP, Fall, OUT}
+    public static Dictionary<Layer, LayerMask> layers = new Dictionary<Layer, LayerMask>();
+
     private AudioSource audioSource;
     public AudioClip pop;
     public AudioClip noFit;
@@ -130,6 +135,7 @@ public class BlobGrid : MonoBehaviour
     public SocketSelector nextStartHeight;
 
     List<Color> colors = new List<Color> {Color.green, Color.magenta, Color.red, Color.yellow, Color.blue};
+  
     private Socket[,,] _grid;
     private Socket[,,] _fillerGrid;
 
@@ -166,8 +172,190 @@ public class BlobGrid : MonoBehaviour
         //Start();
     }
 
+    private class AI {
+        static System.Random random = new System.Random();
+        
+        private class Hand {
+            public Vector3 Position = new Vector3(0,0,0);
+            public Position MoveTo = null;
+            public Position Take = null;
+            public Blob Blob;
+
+            public GameObject HandVisual;
+
+
+            List<(Position, System.Action)> actions = new List<(Position, System.Action)>();
+            public void ReleseBlob() {
+                Blob.Rigidbody.velocity = Vector3.zero;
+                MoveTo = null;
+                Blob.interactionLayerMask = BlobGrid.layers[Layer.KEEP];
+                Blob = null;
+            }
+            public void PickUpBlob(Socket socket) {
+                var blob = socket.Blob;
+                if (blob != null) {
+                    Debug.Log("SetDropOutVisual Rigidbody.isKinematic = " + blob.Rigidbody.isKinematic);
+
+
+                    Blob = blob;
+                    blob.interactionLayerMask = BlobGrid.layers[Layer.OUT];
+                    //blob.Rigidbody.isKinematic = true;
+                    Take = null;
+                } else {  
+                    Debug.Log("no blob to pickup.");
+                    Take = null;
+                    MoveTo = null;
+                }
+            }
+
+
+            public bool IsFree() {
+                return Blob == null && MoveTo == null;
+            }
+            public bool IsIdle() {
+                return IsFree() && Take == null;
+            }
+
+        }
+        private Hand _left = new Hand();
+        private Hand _right = new Hand();
+        private BlobGrid _grid;
+
+        private List<Hand> _hands = new List<Hand>();
+
+        public AI(BlobGrid grid, GameObject handPrefab) {
+            _grid = grid;
+            _hands.Add(_left);
+            _hands.Add(_right);
+
+            _left.HandVisual = Instantiate<GameObject>(handPrefab);
+            _right.HandVisual = Instantiate<GameObject>(handPrefab);
+        }
+        private bool BothHandsFree() {
+            return _hands.All(_ => _.IsFree());
+        }
+        private Hand OtherHand(Hand hand) {
+            return hand == _left ? _right : _left;
+        }
+        public void Update() {
+            foreach (Hand hand in _hands) {
+                if (hand.IsIdle()) {
+                    var occupied = _grid.All()
+                    .Where(_ => _.Blob != null)
+                    .Where(_ => OtherHand(hand).Take != _.GridPosition)
+                    .ToList();
+
+                    var free = _grid.All()
+                    .Where(_ => _.Blob == null)
+                    .Where(_ => _.GridPosition.Y < _grid.height - 1)
+                    .Where(_ => OtherHand(hand).MoveTo != _.GridPosition)
+                    .ToList();
+
+                    if (free.Count != 0 && occupied.Count != 0) {
+
+                        var top = occupied.Find(_ => _.GridPosition.Y == _grid.height - 1);
+                    
+                        var take = top != null ? top : occupied[random.Next(occupied.Count)];
+                        
+                        var sameColorNeighbours = free.Where(_ => _grid.NeighboursFor(_).Exists(n => n.Blob != null && n.Blob.Color == take.Blob.Color)).ToList();
+                        if (sameColorNeighbours.Count == 0) {
+                            break;
+                        }
+                        
+                        var to = sameColorNeighbours[random.Next(sameColorNeighbours.Count)];
+                        //var to = free[random.Next(free.Count)];
+
+                        hand.Take = take.GridPosition;
+                        hand.MoveTo = to.GridPosition;
+                        Debug.Log("From :" + take + "To: " + to);
+                    }
+                }
+            }
+
+            foreach (Hand hand in _hands) {
+                if (hand.Take != null || hand.MoveTo != null) { // todo:  what if it is not moving but holing ablob for some reason...
+                    var target = _grid.SocketAt(hand.Take != null ? hand.Take : hand.MoveTo).transform.position;
+                   
+                                      
+                    var path = target - hand.Position; // vector beween the hand and destination
+                    var step = 2.2f * Time.deltaTime;
+                    
+                    if (hand.Position == target) {
+                        // todo: if (_grid.SocketAt(MovingTo).Blob == null) {}
+                        // RELEASE  blob 
+                        if (hand.Blob == null && hand.Take != null) {
+                            //hand.PickUpBlob
+                            var socket = _grid.SocketAt(hand.Take);
+                            hand.PickUpBlob(socket);
+                        } else if (hand.Blob != null && hand.MoveTo != null) {
+                            // hand.Blob.Rigidbody.MovePosition(hand.Position);
+                            hand.ReleseBlob();
+                            
+                            hand.MoveTo = null;
+                        } else {
+                            Debug.Log("EHHH what do we do now?");
+                        }
+                        
+                    } else {
+                        if (Vector3.Distance(hand.Position, target) < step) {
+                            hand.Position = target;                    
+                        } else {
+                            hand.Position = Vector3.MoveTowards(hand.Position, target, step);
+                        }
+                        if (hand.Blob != null) {
+                            hand.Blob.Rigidbody.MovePosition(hand.Position);
+                        }
+                        if (hand.HandVisual != null) {
+                            hand.HandVisual.transform.SetPositionAndRotation(hand.Position, new Quaternion());
+                        }
+                    }                    
+                    
+                }
+
+                // move blobs
+            }    
+        }
+        
+    }
+    
+
+    private Blob AIPickUp(Position position) {
+        var socket = SocketAt(position);
+        var blob = socket.Blob;
+        blob.interactionLayerMask = OutLayer();
+        //socket.Blob = null;
+        //StartCoroutine(0.1f, () => blob.Rigidbody.MovePosition(new Vector3(0,10,0)));       
+        return blob;
+    }
+    public void AIPlace(Blob blob, Position position) {
+        blob.Rigidbody.MovePosition(_grid[position.X, position.Y, position.Z].transform.position);
+        blob.interactionLayerMask = KeepLayer();
+    }
+
+    private void AIMove() {
+        var blob1 = AIPickUp(new Position(0,0,0));
+        var blob2 = AIPickUp(new Position(2,1,2));
+
+        if (blob1 != null) {
+            StartCoroutine(2.0f, () => AIPlace(blob1, new Position(2,1,2)));
+        }
+        if (blob2 != null) {
+            StartCoroutine(2.0f, () => AIPlace(blob2, new Position(0,0,0)));
+        }
+    }
+    private List<AI> _ais = new List<AI>();
     void Start()
-    {      
+    {   
+        _ais.Add(new AI(this, AIHandPrefab));
+
+        if (layers.Count == 0) {
+            layers[Layer.KEEP] = KeepLayer();
+            layers[Layer.OUT] = OutLayer();
+            layers[Layer.Fall] = FallLayer();
+        }
+
+        //StartCoroutine(3.0f, () => AIMove());   
+
         audioSource = GetComponent<AudioSource>();
         sequencialDropFailCount = 0;
         ScoreBoard.ResetBoard();
@@ -223,6 +411,7 @@ public class BlobGrid : MonoBehaviour
     private int sequencialDropFailCount = 0;
 
     void FillFiller() {
+        // Wait for Combo 
         if (_fillPauseDelay > 0.0f) {
             Invoke("FillFiller", _fillPauseDelay);
             _fillPauseDelay = 0.0f;
@@ -230,6 +419,7 @@ public class BlobGrid : MonoBehaviour
             return;
         }    
 
+        // Fill
         for(int x = 0; x < width; x++) {
             int y = 0;
             for(int z = 0; z < width; z++) {
@@ -249,8 +439,7 @@ public class BlobGrid : MonoBehaviour
             int y = 0;
             for(int z = 0; z < width; z++) {
                 var lowestFree = FindLowestFreeSocketOnTop(x, z); 
-                _fillerGrid[x,y,z].Blob.interactionLayerMask = FallLayer();
-                _fillerGrid[x,y,z].Blob.GetComponent<Rigidbody>().interpolation = RigidbodyInterpolation.None;                
+                _fillerGrid[x,y,z].Blob.interactionLayerMask = FallLayer();             
                 _fillerGrid[x,y,z].Blob = null;
                 if (lowestFree != null ){
                     CatchFallingBlobs(new List<Socket>(){ lowestFree }); 
@@ -259,6 +448,7 @@ public class BlobGrid : MonoBehaviour
                 }
             }
         }
+        // top out logic
         if (failed) {
             sequencialDropFailCount++;
             if (sequencialDropFailCount >= gameOverDropFailThreshhold) {
@@ -277,11 +467,13 @@ public class BlobGrid : MonoBehaviour
         Invoke("FillFiller", dropDelay.curentValue);
     }
 
-
-    // Update is called once per frame 
+    void FixedUpdate() {
+        _ais.ForEach(_ => _.Update());
+    }
     void Update()
     {
-        // blinking red
+        //_ais.ForEach(_ => _.Update());
+
         if (sequencialDropFailCount != 0) {
             var val = Time.time % 2.0f;
             if (val <= 1.0f) {
@@ -311,8 +503,8 @@ public class BlobGrid : MonoBehaviour
         socket.transform.SetPositionAndRotation(vector, new Quaternion()); // need game object?
     
         socket.GridPosition = new Position(position.X, position.Y, position.Z);
-        socket.Color = Color.white; // just something not used
-    
+        socket.DropCheckActive = connectionListener;
+
         grid[position.X, position.Y, position.Z] = socket;
 
         socket.onSelectEntered.AddListener((_) => { // have a queue for multiple trigger at the same time ?
@@ -320,32 +512,29 @@ public class BlobGrid : MonoBehaviour
             if (droppedBlob == null) { // it was not a blob
                 return;
             }
-            socket.Blob = droppedBlob;
-            socket.Color = droppedBlob.Color;
-
-            //droppedBlob.GetComponent<Rigidbody>().interpolation = RigidbodyInterpolation.Interpolate;
-            if (connectionListener) {
-                StartCoroutine(checkForConnctedSocketDrop(socket, 0.1f)); //0.1 allows some time to drop 2 connected blobs
-            }
-
+            BlobDroppedInSocket(droppedBlob, socket);
         });
 
         socket.onSelectExited.AddListener((_) => { // move to socket..
             socket.Blob = null;
         });
-
-
     }
+
+    private void BlobDroppedInSocket(Blob droppedBlob, Socket socket) {
+        socket.Blob = droppedBlob;
+            if (socket.DropCheckActive) {
+                StartCoroutine(checkForConnctedSocketDrop(socket, 0.1f)); //0.1 allows some time to drop 2 connected blobs
+            }
+    }
+
     private IEnumerator checkForConnctedSocketDrop(Socket socket, float t) {
         yield return new WaitForSeconds(t);
         
         var connectedSockets = ConnectedSockets(socket);        
         if (connectedSockets.Count() >= removeThresholdSelector.GetInt()) {
-            Debug.Log("connected: " + connectedSockets.Count + ", color: " + socket.Color);
+            Debug.Log("connected: " + connectedSockets.Count + ", color: " + socket.Blob.Color);
             StartCoroutine(DropOutInSeconds(connectedSockets, 0.5f));
         }
-        
-
     }
 
     // where new falling blobs will fall to 
@@ -414,7 +603,12 @@ public class BlobGrid : MonoBehaviour
 
 
         // push a bit to not stuck while falling // todo maybe remove delay?
-        StartCoroutine(ForceSoon(blobs, 0.1f));
+        StartCoroutine(0.1f, () => {
+             foreach (var blob in blobs) {
+                    blob.Rigidbody.MovePosition(blob.Rigidbody.position + new Vector3(0.05f, 0.05f, 0.05f));
+                    //rigidBody.AddForce(new Vector3(10.05f, 10.05f, 10.05f));
+                }
+        });
 
         //// fall above logic 
         //(1) lowest sockets with the same x z cordinate (lowest socket dropping out will start catching falling blobs), there should be a nicer way.... 
@@ -448,8 +642,7 @@ public class BlobGrid : MonoBehaviour
 
         foreach (var fallingBlob in fallingBlobs)
         {
-            fallingBlob.interactionLayerMask = FallLayer();
-            fallingBlob.Rigidbody.interpolation = RigidbodyInterpolation.None;                            
+            fallingBlob.interactionLayerMask = FallLayer();                          
         }
         foreach (var fallingSocket in socketsWithFallingBlobs)
         {
@@ -490,22 +683,15 @@ public class BlobGrid : MonoBehaviour
     }
 
 
-    private IEnumerator ForceSoon(List<Blob> blobs, float t)
-    {
-        yield return new WaitForSeconds(t);
-        foreach (var blob in blobs)
-        {
-            blob.Rigidbody.MovePosition(blob.Rigidbody.position + new Vector3(0.05f, 0.05f, 0.05f));
-            //rigidBody.AddForce(new Vector3(10.05f, 10.05f, 10.05f));
-        }
-    }
-
     private List<Socket> ConnectedSockets(Socket socket, HashSet<Socket> visited = null) {
+        if (socket.Blob == null) {
+            return new List<Socket>();
+        }
         visited = visited == null ? new HashSet<Socket>() : visited;
         visited.Add(socket);
         var toCheck = NeighboursFor(socket)
-            .Where(s => s.Color == socket.Color)
             .Where(s => s.Blob != null)
+            .Where(s => s.Blob.Color == socket.Blob.Color)
             .Where(s => !visited.Contains(s));
         //Debug.Log("toCheck: " + toCheck.Count());
 
@@ -514,15 +700,18 @@ public class BlobGrid : MonoBehaviour
     } 
 
     private bool PositionInGrid(Position p) => p.X >= 0 && p.Y >= 0 && p.Z >= 0 && p.X < width && p.Y < height && p.Z < width;
-     private Socket SocketAt(Position p) {
+    public Socket SocketAt(Position p) {
         if (PositionInGrid(p)) {
             return _grid[p.X,p.Y,p.Z];
         } else {
             return null;
         }
     }
+    public IEnumerable<Socket> All() {
+        return _grid.Cast<Socket>();
+    }
     
-    private List<Socket> NeighboursFor(Socket socket) {
+    public List<Socket> NeighboursFor(Socket socket) {
         return directions.Select(direction => SocketAt(socket.GridPosition + direction)).Where(neighbour => neighbour != null).ToList();
     }
    List<Position> directions = new List<Position> {
@@ -545,20 +734,31 @@ public class BlobGrid : MonoBehaviour
         public static Position operator +(Position a, Position b) => new Position(a.X + b.X, a.Y + b.Y, a.Z + b.Z);
         public static Position operator -(Position a, Position b) => new Position(a.X - b.X, a.Y - b.Y, a.Z - b.Z);
 
-        public static bool operator ==(Position a, Position b) => a.Equals(b);
-        public static bool operator !=(Position a, Position b) => !a.Equals(b);
+        public static bool operator ==(Position a, Position b) => Position.Equals(a, b);
+        public static bool operator !=(Position a, Position b) => !Position.Equals(a, b);
 
         public bool Equals(Position other) => X == other.X && Y == other.Y && Z == other.Z;
         //public override bool // override object.Equals
         public override bool Equals(object obj)
         {
-            if (obj == null || GetType() != obj.GetType()) {
+            return Position.Equals(this, obj);
+        }
+        public static bool Equals(Position one , Position other) {
+            if (one is null && other is null) {
+                return true;
+            }
+            if (one is null || other is null) {
                 return false;
             }
-            return X == (obj as Position).X 
-                && Y == (obj as Position).Y  
-                && Z == (obj as Position).Z;
+
+            if (one.GetType() != other.GetType()) {
+                return false;
+            }
+            return one.X == other.X 
+                && one.Y == other.Y  
+                && one.Z == other.Z;
         }
+
 
         public override string ToString()
         {

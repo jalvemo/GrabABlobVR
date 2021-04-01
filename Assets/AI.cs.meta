@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: 8006c87642edc4c4e972bb215b825c79
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - BlobPrefab: {instanceID: 0}
+  - SocketPrefab: {instanceID: 0}
+  - DummyKeepPrefab: {fileID: 3150867483668672948, guid: 8a50b79c070917b4fafaa12e5627a749,
+      type: 3}
+  - DummyFallPrefab: {fileID: 2657016886547518662, guid: 68569277fb1cf8e4bb7e89dc838830e7,
+      type: 3}
+  - DummyOutPrefab: {fileID: 7789856747982355280, guid: 34cf3ffcd6fa1494cb63afb574463cec,
+      type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

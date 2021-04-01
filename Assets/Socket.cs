@@ -7,7 +7,7 @@ public class Socket : XRSocketInteractor
 {
 
 
-    public BlobGrid.Position GridPosition;
+    public Position GridPosition;
     public Blob Blob;
     public bool DropCheckActive;
 

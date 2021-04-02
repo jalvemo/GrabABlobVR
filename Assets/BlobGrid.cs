@@ -308,7 +308,7 @@ public class BlobGrid : MonoBehaviour
     }
     private Vector3 GetPositionVector(Position position, int yStart = 0) {
         float offset = width * distance / 2;
-        return new Vector3(position.X * distance - offset, (position.Y + yStart)* distance + 0.5f, position.Z * distance - offset);
+        return new Vector3(position.X * distance - offset, (position.Y + yStart)* distance + 0.5f, position.Z * distance - offset) + this.transform.position;
 }
 
     private void InitSocketAt(Position position, Vector3 vector, Socket[,,] grid, bool connectionListener = true)

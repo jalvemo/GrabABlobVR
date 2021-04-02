@@ -26,7 +26,7 @@ public class AI : MonoBehaviour {
         var grabber = GetComponent<XRGrabInteractable>();
         grabber.interactionLayerMask = Layers.OUT;
         Debug.Log("scale: " + transform.localScale);
-        transform.localScale = transform.localScale * 5.0f;
+        transform.localScale = transform.localScale * 3.0f;
         _rigidBody = GetComponent<Rigidbody>();
         
     }

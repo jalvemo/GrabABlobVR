@@ -49,6 +49,7 @@ big things
 
 ideas
 Cooperative work on the same stack/grid 2 vs 0 2 vs 2 
+different claws for different characters
 
 bals get up like the marble macheene x. maybe also generates music?
 
@@ -90,7 +91,6 @@ public class BlobGrid : MonoBehaviour
     public XRInteractionManager interactionManager;
     public GameObject BlobPrefab;
     public GameObject SocketPrefab;
-    public GameObject AIHandPrefab;
     public Light lighting;
     public ScoreBoard ScoreBoard;
     
@@ -168,24 +168,9 @@ public class BlobGrid : MonoBehaviour
         blob.interactionLayerMask = Layers.KEEP;
     }
 
-    private void AIMove() {
-        var blob1 = AIPickUp(new Position(0,0,0));
-        var blob2 = AIPickUp(new Position(2,1,2));
 
-        if (blob1 != null) {
-            StartCoroutine(2.0f, () => AIPlace(blob1, new Position(2,1,2)));
-        }
-        if (blob2 != null) {
-            StartCoroutine(2.0f, () => AIPlace(blob2, new Position(0,0,0)));
-        }
-    }
-    private List<AI> _ais = new List<AI>();
     void Start()
     {   
-        _ais.Add(new AI(this, AIHandPrefab));
-
-        //StartCoroutine(3.0f, () => AIMove());   
-
         audioSource = GetComponent<AudioSource>();
         sequencialDropFailCount = 0;
         ScoreBoard.ResetBoard();
@@ -298,7 +283,7 @@ public class BlobGrid : MonoBehaviour
     }
 
     void FixedUpdate() {
-        _ais.ForEach(_ => _.Update());
+        
     }
     void Update()
     {
@@ -338,8 +323,11 @@ public class BlobGrid : MonoBehaviour
         grid[position.X, position.Y, position.Z] = socket;
 
         socket.onSelectEntered.AddListener((_) => { // have a queue for multiple trigger at the same time ?
+            
             var droppedBlob = _.GetComponent<Blob>();
             if (droppedBlob == null) { // it was not a blob
+                var ai = _.GetComponent<AI>();
+                ai.AssignToGrid(this);
                 return;
             }
             BlobDroppedInSocket(droppedBlob, socket);

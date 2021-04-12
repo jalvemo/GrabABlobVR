@@ -281,11 +281,9 @@ public class BlobGrid : MonoBehaviour
                 Stop();
             } else {
                 audioSource.PlayOneShot(noFit);
-                lighting.color = Color.red;
             }
         } else {
             sequencialDropFailCount = 0;
-            lighting.color = Color.white;
             audioSource.PlayOneShot(fallSound, 1.0f);
 
         }
@@ -298,15 +296,17 @@ public class BlobGrid : MonoBehaviour
     void Update()
     {
         //_ais.ForEach(_ => _.Update());
-
         if (sequencialDropFailCount != 0) {
             var val = Time.time % 2.0f;
             if (val <= 1.0f) {
-                lighting.color = new Color(1, 1.0f - val, 1.0f - val);
+                lighting.intensity = 20 * (1.0f - val);
             } else {
-                lighting.color = new Color(1, val - 1.0f,  val - 1.0f);
+                lighting.intensity = 20 * (val - 1.0f);
             }
-        }
+        } else {
+                lighting.intensity = 0;
+
+        } 
     }
 
     private void CreateBlob(Position position, Vector3 vector, bool randomColor = false) {    

@@ -317,7 +317,7 @@ public class BlobGrid : MonoBehaviour
         blob.Color = color;
     }
     private Vector3 GetPositionVector(Position position, int yStart = 0) {
-        float offset = width * distance / 2;
+        float offset = (width - 1) * distance / 2;
         return new Vector3(position.X * distance - offset, (position.Y + yStart)* distance + 0.5f, position.Z * distance - offset) + this.transform.position;
     }
 

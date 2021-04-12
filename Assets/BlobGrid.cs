@@ -319,7 +319,7 @@ public class BlobGrid : MonoBehaviour
     private Vector3 GetPositionVector(Position position, int yStart = 0) {
         float offset = width * distance / 2;
         return new Vector3(position.X * distance - offset, (position.Y + yStart)* distance + 0.5f, position.Z * distance - offset) + this.transform.position;
-}
+    }
 
     private void InitSocketAt(Position position, Vector3 vector, Socket[,,] grid, bool connectionListener = true)
     {   
@@ -409,7 +409,7 @@ public class BlobGrid : MonoBehaviour
         // scale mark as gone 
         for(int i = 0; i < sockets.Count; i++) {
             StartCoroutine(BlobDropAudioVisual(sockets[i].Blob, i * t / sockets.Count));
-            //var blob =  sockets[i].Blob;
+            //var blob = sockets[i].Blob;
             //StartCoroutine(i * t / sockets.Count,
             //    () => {
             //        blob.SetDropOutVisual();
@@ -419,7 +419,7 @@ public class BlobGrid : MonoBehaviour
             sockets[i].Blob = null; // (2) todo,might be dangerous this early 
         }
 
-        _fillPauseDelay = t; // pause filling while falling..
+        _fillPauseDelay = t + 1; // pause filling while falling.. + 1 to wait for the fall a bit also. Some kind of callback when fall is complete might be better.  
     
         // score
         ScoreBoard.AddScore(blobs); 

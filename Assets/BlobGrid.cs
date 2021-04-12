@@ -240,9 +240,9 @@ public class BlobGrid : MonoBehaviour
         if (_fillPauseDelay > 0.0f) {
             Invoke("FillFiller", _fillPauseDelay);
             _fillPauseDelay = 0.0f;
-            ScoreBoard.ApplyScore();
             return;
         }    
+        ScoreBoard.ApplyScore();
 
         // Fill
         for(int x = 0; x < width; x++) {
@@ -419,7 +419,7 @@ public class BlobGrid : MonoBehaviour
             sockets[i].Blob = null; // (2) todo,might be dangerous this early 
         }
 
-        _fillPauseDelay = t + 1; // pause filling while falling.. + 1 to wait for the fall a bit also. Some kind of callback when fall is complete might be better.  
+        _fillPauseDelay = _fillPauseDelay + t + 0.5f; // pause filling while falling.. + 0.5f to wait for the fall a bit also. Some kind of callback when fall is complete might be better.  
     
         // score
         ScoreBoard.AddScore(blobs); 

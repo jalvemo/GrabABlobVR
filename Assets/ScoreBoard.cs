@@ -37,16 +37,8 @@ public class ScoreBoard : MonoBehaviour
     }
     public void LevelUp(int level = 1) {
         Level += level;
-        message = "Speed increesed";
         UpdateText();
     }
-
-    public void AddScore(int score) {
-        Score += score;
-        message = "You got " + score;
-        UpdateText();
-    }
-
 
     private List<List<Blob>> _combo = new List<List<Blob>>();
     private Dictionary<int, List<List<Blob>>> _comboGroupedBySize;
@@ -56,13 +48,8 @@ public class ScoreBoard : MonoBehaviour
         var scoreToAdd = blobCount * _combo.Count;
         _combo = new List<List<Blob>>();
         Score += scoreToAdd;
-
-        message = "Scoreing " + blobCount;
-        if (_combo.Count() > 1) {
-             message += " X" + _combo.Count() + " Combo = " + scoreToAdd;
-        }
-        UpdateText();
     }
+
     public void AddScore(List<Blob> blobs) {
         _combo.Add(blobs);
 
@@ -70,7 +57,7 @@ public class ScoreBoard : MonoBehaviour
         //    .GroupBy(_ => _.Count)
         //    .ToDictionary(_ => _.Key, _ => _.ToList());
         
-        // todo factor in level in score 
+        // todo factor in level in score
         var blobCount = _combo.Sum(_ => _.Count);
         var scoreToAdd = blobCount * _combo.Count;
 
@@ -79,8 +66,8 @@ public class ScoreBoard : MonoBehaviour
              message += " X" + _combo.Count() + " Combo = " + scoreToAdd;
         }
         UpdateText();
-
     }
+    
     public void ResetBoard() {
         Level = 0;
         Score = 0;

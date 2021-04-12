@@ -126,6 +126,8 @@ public class BlobGrid : MonoBehaviour
     // level  0-10 : 2.0 1.3, .88 .59 .39 .26 .17 .11 .07 .05 .034
     private float levelUpWaitSeconds = 20;
 
+    private bool _started = false;
+
     private void LevelUp() {
         Invoke("LevelUp", levelUpWaitSeconds);
         dropDelay.curentValue = dropDelay.curentValue * levelSpeedChange;
@@ -135,8 +137,6 @@ public class BlobGrid : MonoBehaviour
     }
     public void Restart() {
         Stop();
-        Invoke("Start", 1.5f);
-        
     }
     public void Stop() {
         CancelInvoke("LevelUp");
@@ -151,7 +151,7 @@ public class BlobGrid : MonoBehaviour
         foreach (var socket in _grid) { cleanSocket.Invoke(socket); }
         foreach (var socket in _fillerGrid) { cleanSocket.Invoke(socket); }
 
-        //Start();
+        _started = false;
     }
     
 
@@ -169,8 +169,7 @@ public class BlobGrid : MonoBehaviour
     }
 
 
-    void Start()
-    {   
+    void PrepareStart() {
         audioSource = GetComponent<AudioSource>();
         sequencialDropFailCount = 0;
         ScoreBoard.ResetBoard();
@@ -197,28 +196,39 @@ public class BlobGrid : MonoBehaviour
             }                           
         }
 
-    nextWidth.onChanged = () => {
-        width = nextWidth.GetInt();
-        Restart();
-    };
+        nextWidth.onChanged = () => {
+            width = nextWidth.GetInt();
+            Restart();
+        };
 
-    nextHeight.onChanged = () => {
-        Height = nextHeight.GetInt();
-        Restart();
-    };
+        nextHeight.onChanged = () => {
+            Height = nextHeight.GetInt();
+            Restart();
+        };
 
-    nextStartHeight.onChanged = () => {
-        startHeight = nextStartHeight.GetInt();
-        Restart();
-    };
-
-        Invoke("FillFiller", dropDelay.curentValue);
-        Invoke("LevelUp", levelUpWaitSeconds);
+        nextStartHeight.onChanged = () => {
+            startHeight = nextStartHeight.GetInt();
+            Restart();
+        };
         
         dropDelay.onChanged = () => {
             CancelInvoke("FillFiller");
-            Invoke("FillFiller", dropDelay.curentValue);
+            if (_started) {
+                Invoke("FillFiller", dropDelay.curentValue);
+            }
         };
+    }
+    void StartGame() {
+        _started = true;
+
+        Invoke("FillFiller", dropDelay.curentValue);
+        Invoke("LevelUp", levelUpWaitSeconds);
+    }
+
+
+    void Start()
+    {   
+        PrepareStart();
     }
 
     private float _fillPauseDelay = 0.0f;      
@@ -335,6 +345,9 @@ public class BlobGrid : MonoBehaviour
 
         socket.onSelectExited.AddListener((_) => { // move to socket..
             socket.Blob = null;
+            if (!_started) {
+                StartGame();
+            }
         });
     }
 

@@ -36,7 +36,6 @@ public class SocketSelector : MonoBehaviour
     //void Awake()
     void Start() 
     {
-        Debug.Log("init selector");
         float offset = distance * (optionCount) / 2;
         headerTextCompontent = this.GetComponentInChildren<TextMeshPro>(); 
         headerTextCompontent.text = displayName;

@@ -161,7 +161,7 @@ public class AI : MonoBehaviour {
         public void ReleseBlob() {
             Blob.Rigidbody.velocity = Vector3.zero;
             MoveTo = null;
-            Blob.interactionLayerMask = Layers.KEEP;
+            Blob.SetGrabLayer(Layers.KEEP);
             Blob = null;
         }
         public void PickUpBlob(Socket socket) {
@@ -169,7 +169,7 @@ public class AI : MonoBehaviour {
             if (blob != null) {
                 
                 Blob = blob;
-                blob.interactionLayerMask = Layers.OUT;
+                blob.SetGrabLayer(Layers.OUT);
                 //blob.Rigidbody.isKinematic = true;
                 Take = null;
             } else {  

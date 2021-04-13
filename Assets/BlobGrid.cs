@@ -1,10 +1,12 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.Events;
 
 using System.Linq;
+using MLAPI;
+
 
 
 /*
@@ -101,7 +103,7 @@ public class BlobGrid : MonoBehaviour
     public AudioClip fallSound;
     public AudioClip levelUpSound;
 
-
+    public bool Host = false;
 
     int width = 3;
     public int Height = 6;
@@ -135,8 +137,23 @@ public class BlobGrid : MonoBehaviour
         Debug.Log("Level up speed: " + dropDelay.curentValue);
         ScoreBoard.LevelUp();
     }
+
+    private Blob AIPickUp(Position position) {
+        var socket = SocketAt(position);
+        var blob = socket.Blob;
+        blob.SetGrabLayer(Layers.OUT);
+        //socket.Blob = null;
+        //StartCoroutine(0.1f, () => blob.Rigidbody.MovePosition(new Vector3(0,10,0)));       
+        return blob;
+    }
+    public void AIPlace(Blob blob, Position position) {
+        blob.Rigidbody.MovePosition(_grid[position.X, position.Y, position.Z].transform.position);
+        blob.SetGrabLayer(Layers.KEEP);
+    }
+
     public void Restart() {
         Stop();
+        PrepareStart();
     }
     public void Stop() {
         CancelInvoke("LevelUp");
@@ -153,21 +170,6 @@ public class BlobGrid : MonoBehaviour
 
         _started = false;
     }
-    
-
-    private Blob AIPickUp(Position position) {
-        var socket = SocketAt(position);
-        var blob = socket.Blob;
-        blob.interactionLayerMask = Layers.OUT;
-        //socket.Blob = null;
-        //StartCoroutine(0.1f, () => blob.Rigidbody.MovePosition(new Vector3(0,10,0)));       
-        return blob;
-    }
-    public void AIPlace(Blob blob, Position position) {
-        blob.Rigidbody.MovePosition(_grid[position.X, position.Y, position.Z].transform.position);
-        blob.interactionLayerMask = Layers.KEEP;
-    }
-
 
     void PrepareStart() {
         audioSource = GetComponent<AudioSource>();
@@ -225,10 +227,52 @@ public class BlobGrid : MonoBehaviour
         Invoke("LevelUp", levelUpWaitSeconds);
     }
 
-
+    public NetworkManager nm;
     void Start()
     {   
-        PrepareStart();
+        Debug.Log("test");    
+        StartCoroutine(1.0f, ()=>{
+            if (Host) {
+                Debug.Log("Start Host");
+                nm.StartHost();
+                //NetworkManager.Singleton.StartHost();
+            } else {
+                Debug.Log("Start client");
+                nm.StartClient();
+                //NetworkManager.Singleton.StartClient();
+            }
+        });
+
+
+        System.Action move = ()=>{
+            if (NetworkManager.Singleton.ConnectedClients.TryGetValue(NetworkManager.Singleton.LocalClientId, out var networkedClient))
+            {
+                var player = networkedClient.PlayerObject.GetComponent<Player>();
+                if (player)
+                {
+                    player.Move();
+                }
+            }
+        };
+
+        System.Action clientCheck = null;
+        clientCheck = ()=>{
+            if (NetworkManager.Singleton.IsClient || NetworkManager.Singleton.IsServer) {
+                move();
+
+                Debug.Log("client count: " + NetworkManager.Singleton.ConnectedClientsList.Count);
+                foreach (var client in  NetworkManager.Singleton.ConnectedClientsList) {
+                    Debug.Log("client: " + client.ClientId + ", me: " + NetworkManager.Singleton.LocalClientId);
+                }
+                StartCoroutine(5.0f, clientCheck);
+            }
+        };
+        StartCoroutine(5.0f, clientCheck);
+
+        
+        StartCoroutine(5.0f, () => { PrepareStart(); });
+        
+        
     }
 
     private float _fillPauseDelay = 0.0f;      
@@ -264,7 +308,7 @@ public class BlobGrid : MonoBehaviour
             int y = 0;
             for(int z = 0; z < width; z++) {
                 var lowestFree = FindLowestFreeSocketOnTop(x, z); 
-                _fillerGrid[x,y,z].Blob.interactionLayerMask = Layers.FALL;             
+                _fillerGrid[x,y,z].Blob.SetGrabLayer(Layers.FALL);             
                 _fillerGrid[x,y,z].Blob = null;
                 if (lowestFree != null ){
                     CatchFallingBlobs(new List<Socket>(){ lowestFree }); 
@@ -308,19 +352,6 @@ public class BlobGrid : MonoBehaviour
 
         } 
     }
-
-    private void CreateBlob(Position position, Vector3 vector, bool randomColor = false) {    
-        Blob blob = Instantiate(BlobPrefab).GetComponent<Blob>();
-        blob.name = "blob " + position.ToString();
-        blob.transform.SetPositionAndRotation(vector, new Quaternion()); 
-        var color = randomColor ? colors[Random.Range(0, colors.Count)] : colors[(position.X + position.Y + position.Z) % (colors.Count - 1)];    
-        blob.Color = color;
-    }
-    private Vector3 GetPositionVector(Position position, int yStart = 0) {
-        float offset = (width - 1) * distance / 2;
-        return new Vector3(position.X * distance - offset, (position.Y + yStart)* distance + 0.5f, position.Z * distance - offset) + this.transform.position;
-    }
-
     private void InitSocketAt(Position position, Vector3 vector, Socket[,,] grid, bool connectionListener = true)
     {   
         Socket socket = Instantiate(SocketPrefab).GetComponent<Socket>();
@@ -350,6 +381,23 @@ public class BlobGrid : MonoBehaviour
             }
         });
     }
+    private void CreateBlob(Position position, Vector3 vector, bool randomColor = false) {    
+        Blob blob = Instantiate(BlobPrefab).GetComponent<Blob>();
+        blob.name = "blob " + position.ToString();
+        blob.transform.SetPositionAndRotation(vector, new Quaternion()); 
+        var color = randomColor ? colors[Random.Range(0, colors.Count)] : colors[(position.X + position.Y + position.Z) % (colors.Count - 1)];    
+        blob.Color = color;
+        blob.SetGrabLayer(Layers.KEEP);
+        if (nm.IsServer) {
+            blob.Rigidbody.useGravity = true;
+        }
+    }
+    private Vector3 GetPositionVector(Position position, int yStart = 0) {
+        float offset = (width - 1) * distance / 2;
+        return new Vector3(position.X * distance - offset, (position.Y + yStart)* distance + 0.5f, position.Z * distance - offset) + this.transform.position;
+    }
+
+   
 
     private void BlobDroppedInSocket(Blob droppedBlob, Socket socket) {
         socket.Blob = droppedBlob;
@@ -429,7 +477,7 @@ public class BlobGrid : MonoBehaviour
         
         // drop out
         foreach (var blob in blobs) {
-            blob.interactionLayerMask = Layers.OUT;
+            blob.SetGrabLayer(Layers.OUT);
         }
 
 
@@ -473,7 +521,7 @@ public class BlobGrid : MonoBehaviour
 
         foreach (var fallingBlob in fallingBlobs)
         {
-            fallingBlob.interactionLayerMask = Layers.FALL;                          
+            fallingBlob.SetGrabLayer(Layers.FALL);
         }
         foreach (var fallingSocket in socketsWithFallingBlobs)
         {
@@ -507,7 +555,7 @@ public class BlobGrid : MonoBehaviour
                     nextCatchingSocket.interactionLayerMask = Layers.KEEP;
                 // make the catch blob not falling. 
 
-                catchedBlob.interactionLayerMask = Layers.KEEP;
+                catchedBlob.SetGrabLayer(Layers.KEEP);
                 CatchFallingBlobs(catchingSockets.Skip(1).ToList());
             };
             nextCatchingSocket.onSelectEntered.AddListener(catchFallingBlob);

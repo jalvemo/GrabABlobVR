@@ -19,12 +19,10 @@ public class Hide : MonoBehaviour
     }
     public void ShowMe() {
         active = true;
-        Debug.Log("show, active; " + active);
         this.gameObject.SetActive(active);
     }
     public void HideMe() {
         active = false;
-        Debug.Log("hide, active; " + active);
         this.gameObject.SetActive(active);
     }
     // Update is called once per frame

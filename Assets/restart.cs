@@ -7,10 +7,9 @@ public class restart : MonoBehaviour
 
     public GameObject ResetColidingWith;
     void OnCollisionEnter(Collision collision) {
-        Debug.Log("no reset" + collision.gameObject.name);
         if (collision.gameObject == ResetColidingWith) {
 
-            Debug.Log("reset !! " + collision.gameObject.name);
+            Debug.Log("reset!" + collision.gameObject.name);
             SceneManager.LoadScene(SceneManager.GetActiveScene().name);
         }
     }

@@ -5,11 +5,8 @@ using UnityEngine.XR.Interaction.Toolkit;
 
 public class Socket : XRSocketInteractor
 {
-
-
     public Position GridPosition;
     public Blob Blob;
-    public bool DropCheckActive;
 
     public XRBaseInteractable Interactable {
         get { return GetComponent<XRBaseInteractable>(); }

@@ -111,15 +111,11 @@ public class BlobGrid : MonoBehaviour
     float distance = 0.3f;//0.275f;
     
     public SocketSelector removeThresholdSelector;
-
     public SocketSelector dropDelay;
-    
     public SocketSelector nextWidth;
     public SocketSelector nextHeight;
     public SocketSelector nextStartHeight;
 
-    List<Color> colors = new List<Color> {Color.green, Color.magenta, Color.red, Color.yellow, Color.blue};
-  
     private Socket[,,] _grid;
     private Socket[,,] _fillerGrid;
 
@@ -183,9 +179,9 @@ public class BlobGrid : MonoBehaviour
                     var position = new Position(x,y,z);
                     var positionVector =  GetPositionVector(position);
                     if (y < startHeight) {
-                    CreateBlob(position, positionVector);
+                        Blob.Instantiate(positionVector, Blob.Colors[(position.X + position.Y + position.Z) % (Blob.Colors.Count - 1)]);
                     }
-                    InitSocketAt(position,positionVector, _grid);
+                    InitSocketAt(position, positionVector, _grid);
                 }               
             }  
         }
@@ -276,12 +272,32 @@ public class BlobGrid : MonoBehaviour
         PrepareStart(); 
     }
 
+    void FixedUpdate() {
+        
+    }
+    void Update()
+    {
+        UpdateRedLight();
+    }
+    private void UpdateRedLight() {
+        if (sequencialDropFailCount != 0) {
+            var val = Time.time % 2.0f;
+            if (val <= 1.0f) {
+                lighting.intensity = 20 * (1.0f - val);
+            } else {
+                lighting.intensity = 20 * (val - 1.0f);
+            }
+        } else {
+                lighting.intensity = 0;
+        } 
+    }
+
     private float _fillPauseDelay = 0.0f;      
     private int gameOverDropFailThreshhold = 2;
     private int sequencialDropFailCount = 0;
 
     void FillFiller() {
-        // Wait for Combo 
+        // Wait while dropping
         if (_fillPauseDelay > 0.0f) {
             Invoke("FillFiller", _fillPauseDelay);
             _fillPauseDelay = 0.0f;
@@ -296,11 +312,10 @@ public class BlobGrid : MonoBehaviour
                 if (_fillerGrid[x,y,z].Blob == null) {
                     var position = new Position(x,y,z);
                     var vector = GetPositionVector(position, fillerGridYPositionRelative + Height); 
-                    CreateBlob(position, vector, true); 
+                    Blob.Instantiate(vector); 
                     Invoke("FillFiller", dropDelay.curentValue);
                     return;
                 }
-
             }                           
         }
         // Fall
@@ -332,46 +347,28 @@ public class BlobGrid : MonoBehaviour
             audioSource.PlayOneShot(fallSound, 1.0f);
 
         }
+
+        // repeat
         Invoke("FillFiller", dropDelay.curentValue);
     }
 
-    void FixedUpdate() {
-        
-    }
-    void Update()
-    {
-        //_ais.ForEach(_ => _.Update());
-        if (sequencialDropFailCount != 0) {
-            var val = Time.time % 2.0f;
-            if (val <= 1.0f) {
-                lighting.intensity = 20 * (1.0f - val);
-            } else {
-                lighting.intensity = 20 * (val - 1.0f);
-            }
-        } else {
-                lighting.intensity = 0;
-
-        } 
-    }
     private void InitSocketAt(Position position, Vector3 vector, Socket[,,] grid, bool connectionListener = true)
     {   
-        Socket socket = Instantiate(SocketPrefab).GetComponent<Socket>();
+        Socket socket = Instantiate(SocketPrefab, vector, new Quaternion()).GetComponent<Socket>();
         socket.name = "socket " + position.ToString();       
-        socket.transform.SetPositionAndRotation(vector, new Quaternion()); // need game object?
-    
-        socket.GridPosition = new Position(position.X, position.Y, position.Z);
-        socket.DropCheckActive = connectionListener;
+        socket.GridPosition = position;
 
         grid[position.X, position.Y, position.Z] = socket;
 
-        socket.onSelectEntered.AddListener((_) => { // have a queue for multiple trigger at the same time ?
-            
+        socket.onSelectEntered.AddListener((_) => {
+            _.GetComponent<AI>()?.AssignToGrid(this);
             var droppedBlob = _.GetComponent<Blob>();
-            if (droppedBlob == null) { // it was not a blob
-                _.GetComponent<AI>()?.AssignToGrid(this);
-                return;
+            if (droppedBlob != null) { 
+                socket.Blob = droppedBlob;
+                if (connectionListener) {
+                    StartCoroutine(checkForConnctedSocketDrop(socket, 0.1f)); //0.1 allows some time to drop 2 connected blobs
+                }
             }
-            BlobDroppedInSocket(droppedBlob, socket);
         });
 
         socket.onSelectExited.AddListener((_) => { // move to socket..
@@ -381,65 +378,17 @@ public class BlobGrid : MonoBehaviour
             }
         });
     }
-    private void CreateBlob(Position position, Vector3 vector, bool randomColor = false) {    
-        Blob blob = Instantiate(BlobPrefab).GetComponent<Blob>();
-        blob.name = "blob " + position.ToString();
-        blob.transform.SetPositionAndRotation(vector, new Quaternion()); 
-        var color = randomColor ? colors[Random.Range(0, colors.Count)] : colors[(position.X + position.Y + position.Z) % (colors.Count - 1)];    
-        blob.Color = color;
-        blob.SetGrabLayer(Layers.KEEP);
-        blob.Rigidbody.useGravity = true;
-        
-    }
-    private Vector3 GetPositionVector(Position position, int yStart = 0) {
-        float offset = (width - 1) * distance / 2;
-        return new Vector3(position.X * distance - offset, (position.Y + yStart)* distance + 0.5f, position.Z * distance - offset) + this.transform.position;
-    }
-
-    private void BlobDroppedInSocket(Blob droppedBlob, Socket socket) {
-        socket.Blob = droppedBlob;
-            if (socket.DropCheckActive) {
-                StartCoroutine(checkForConnctedSocketDrop(socket, 0.1f)); //0.1 allows some time to drop 2 connected blobs
-            }
-    }
-
+    
     private IEnumerator checkForConnctedSocketDrop(Socket socket, float t) {
         yield return new WaitForSeconds(t);
         
         var connectedSockets = ConnectedSockets(socket);        
         if (connectedSockets.Count() >= removeThresholdSelector.GetInt()) {
-            Debug.Log("connected: " + connectedSockets.Count + ", color: " + socket.Blob.Color);
+            // Debug.Log("connected: " + connectedSockets.Count + ", color: " + socket.Blob.Color);
             StartCoroutine(DropOutInSeconds(connectedSockets, 0.5f));
         }
     }
-
-    // where new falling blobs will fall to 
-    private Socket FindLowestFreeSocketOnTop(int x, int z) {
-        if (_grid[x, Height - 1, z].Blob != null) { // top
-            return null;
-        }
-
-        for(int i = Height - 2; i >= 0 ; i--) {
-            if (_grid[x, i, z].Blob != null)
-            {
-                return _grid[x, i + 1, z];
-            }
-        }
-        return _grid[x, 0, z]; // bottom
-    }
-
-    private List<Socket> GetAboveOrderedLowestFirst(Socket socket) {
-        var above = new List<Socket>();
-        if (socket.GridPosition.Y == Height - 1) {
-            return above;
-        }
-        for( int i = socket.GridPosition.Y + 1; i < Height ; i++) {
-            above.Add(_grid[socket.GridPosition.X, i , socket.GridPosition.Z]);
-        }
-        return above;
-    } 
-
-
+  
     private IEnumerator BlobDropAudioVisual(Blob blob, float t) {
         yield return new WaitForSeconds(t);
         blob.SetDropOutVisual();
@@ -502,6 +451,7 @@ public class BlobGrid : MonoBehaviour
             FallAbove(bottonSocket);
         }
     }
+    
     private void FallAbove(Socket bottomCatchingSocket) {
         // Release falling blobs 
         var aboveSockets = GetAboveOrderedLowestFirst(bottomCatchingSocket).ToList();
@@ -549,7 +499,7 @@ public class BlobGrid : MonoBehaviour
 
             nextCatchingSocket.onSelectEntered.RemoveListener(catchFallingBlob);
             // catch regular blobs 
-                nextCatchingSocket.interactionLayerMask = Layers.KEEP;
+            nextCatchingSocket.interactionLayerMask = Layers.KEEP;
             // make the catch blob not falling. 
 
             catchedBlob.SetGrabLayer(Layers.KEEP);
@@ -558,13 +508,45 @@ public class BlobGrid : MonoBehaviour
         nextCatchingSocket.onSelectEntered.AddListener(catchFallingBlob);
     }
 
+    // ------------------- Helpers -------------------
+
+    // where new falling blobs will fall to 
+    private Socket FindLowestFreeSocketOnTop(int x, int z) {
+        if (_grid[x, Height - 1, z].Blob != null) { // top
+            return null;
+        }
+
+        for(int i = Height - 2; i >= 0 ; i--) {
+            if (_grid[x, i, z].Blob != null)
+            {
+                return _grid[x, i + 1, z];
+            }
+        }
+        return _grid[x, 0, z]; // bottom
+    }
+
+    private List<Socket> GetAboveOrderedLowestFirst(Socket socket) {
+        var above = new List<Socket>();
+        if (socket.GridPosition.Y == Height - 1) {
+            return above;
+        }
+        for( int i = socket.GridPosition.Y + 1; i < Height ; i++) {
+            above.Add(_grid[socket.GridPosition.X, i , socket.GridPosition.Z]);
+        }
+        return above;
+    } 
+
+    private Vector3 GetPositionVector(Position position, int yStart = 0) {
+        float offset = (width - 1) * distance / 2;
+        return new Vector3(position.X * distance - offset, (position.Y + yStart)* distance + 0.5f, position.Z * distance - offset) + this.transform.position;
+    }
 
     private List<Socket> ConnectedSockets(Socket socket, HashSet<Socket> visited = null) {
         if (socket.Blob == null) {
             return new List<Socket>();
         }
         
-        visited ??= new HashSet<Socket>(); // visited = visited == null ? new HashSet<Socket>() : visited;
+        visited = visited ?? new HashSet<Socket>();
         visited.Add(socket);
         var toCheck = NeighboursFor(socket)
             .Where(s => s.Blob != null)

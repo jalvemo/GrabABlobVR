@@ -8,7 +8,6 @@ using MLAPI.NetworkVariable;
 public class Blob : NetworkBehaviour
 {
     public Blob() {
-
         _color.OnValueChanged += (fromColor, toColor) => {
             GetComponent<Renderer>().material.color = toColor; 
         }; 

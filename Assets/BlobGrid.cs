@@ -227,9 +227,10 @@ public class BlobGrid : MonoBehaviour
         Invoke("LevelUp", levelUpWaitSeconds);
     }
 
-    public NetworkManager nm;
+    //public NetworkManager nm;
     void Start()
     {   
+        /*
         Debug.Log("test");    
         StartCoroutine(1.0f, ()=>{
             if (Host) {
@@ -271,8 +272,8 @@ public class BlobGrid : MonoBehaviour
 
         
         StartCoroutine(5.0f, () => { PrepareStart(); });
-        
-        
+        */
+        PrepareStart(); 
     }
 
     private float _fillPauseDelay = 0.0f;      
@@ -367,8 +368,7 @@ public class BlobGrid : MonoBehaviour
             
             var droppedBlob = _.GetComponent<Blob>();
             if (droppedBlob == null) { // it was not a blob
-                var ai = _.GetComponent<AI>();
-                ai.AssignToGrid(this);
+                _.GetComponent<AI>()?.AssignToGrid(this);
                 return;
             }
             BlobDroppedInSocket(droppedBlob, socket);
@@ -388,16 +388,13 @@ public class BlobGrid : MonoBehaviour
         var color = randomColor ? colors[Random.Range(0, colors.Count)] : colors[(position.X + position.Y + position.Z) % (colors.Count - 1)];    
         blob.Color = color;
         blob.SetGrabLayer(Layers.KEEP);
-        if (nm.IsServer) {
-            blob.Rigidbody.useGravity = true;
-        }
+        blob.Rigidbody.useGravity = true;
+        
     }
     private Vector3 GetPositionVector(Position position, int yStart = 0) {
         float offset = (width - 1) * distance / 2;
         return new Vector3(position.X * distance - offset, (position.Y + yStart)* distance + 0.5f, position.Z * distance - offset) + this.transform.position;
     }
-
-   
 
     private void BlobDroppedInSocket(Blob droppedBlob, Socket socket) {
         socket.Blob = droppedBlob;
@@ -543,22 +540,22 @@ public class BlobGrid : MonoBehaviour
         nextCatchingSocket.interactionLayerMask = Layers.FALL;
 
         UnityAction<XRBaseInteractable> catchFallingBlob = null;
-            catchFallingBlob = (_) => {
-                var catchedBlob = _.GetComponent<Blob>();
-                if (catchedBlob == null) {
-                    Debug.Log("Wops - Tried to catch falling blob, but was no blob: " + _);
-                    return;
-                }
+        catchFallingBlob = (_) => {
+            var catchedBlob = _.GetComponent<Blob>();
+            if (catchedBlob == null) {
+                Debug.Log("Wops - Tried to catch falling blob, but was no blob: " + _);
+                return;
+            }
 
-                nextCatchingSocket.onSelectEntered.RemoveListener(catchFallingBlob);
-                // catch regular blobs 
-                    nextCatchingSocket.interactionLayerMask = Layers.KEEP;
-                // make the catch blob not falling. 
+            nextCatchingSocket.onSelectEntered.RemoveListener(catchFallingBlob);
+            // catch regular blobs 
+                nextCatchingSocket.interactionLayerMask = Layers.KEEP;
+            // make the catch blob not falling. 
 
-                catchedBlob.SetGrabLayer(Layers.KEEP);
-                CatchFallingBlobs(catchingSockets.Skip(1).ToList());
-            };
-            nextCatchingSocket.onSelectEntered.AddListener(catchFallingBlob);
+            catchedBlob.SetGrabLayer(Layers.KEEP);
+            CatchFallingBlobs(catchingSockets.Skip(1).ToList());
+        };
+        nextCatchingSocket.onSelectEntered.AddListener(catchFallingBlob);
     }
 
 
@@ -566,7 +563,8 @@ public class BlobGrid : MonoBehaviour
         if (socket.Blob == null) {
             return new List<Socket>();
         }
-        visited = visited == null ? new HashSet<Socket>() : visited;
+        
+        visited ??= new HashSet<Socket>(); // visited = visited == null ? new HashSet<Socket>() : visited;
         visited.Add(socket);
         var toCheck = NeighboursFor(socket)
             .Where(s => s.Blob != null)

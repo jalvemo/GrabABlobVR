@@ -91,7 +91,6 @@ Dificulty couold be
 public class BlobGrid : MonoBehaviour
 {
     public XRInteractionManager interactionManager;
-    public GameObject BlobPrefab;
     public GameObject SocketPrefab;
     public Light lighting;
     public ScoreBoard ScoreBoard;
@@ -103,11 +102,9 @@ public class BlobGrid : MonoBehaviour
     public AudioClip fallSound;
     public AudioClip levelUpSound;
 
-    public bool Host = false;
-
     int width = 3;
     public int Height = 6;
-    int startHeight = 4;
+    int startHeight = 1;
     float distance = 0.3f;//0.275f;
     
     public SocketSelector removeThresholdSelector;
@@ -118,13 +115,18 @@ public class BlobGrid : MonoBehaviour
 
     private Socket[,,] _grid;
     private Socket[,,] _fillerGrid;
-
+    
     private int fillerGridYPositionRelative = 0;
     private float levelSpeedChange = 2.0f / 3.0f;
     // level  0-10 : 2.0 1.3, .88 .59 .39 .26 .17 .11 .07 .05 .034
     private float levelUpWaitSeconds = 20;
 
     private bool _started = false;
+
+
+    ////// multiplayer properies START //////////////
+    public NetworkSelection network = null;
+    ////// multiplayer properies END //////////////
 
     private void LevelUp() {
         Invoke("LevelUp", levelUpWaitSeconds);
@@ -147,18 +149,21 @@ public class BlobGrid : MonoBehaviour
         blob.SetGrabLayer(Layers.KEEP);
     }
 
-    public void Restart() {
+    public void Reset() {
+        Debug.Log("Reset");
+
         Stop();
         PrepareStart();
     }
     public void Stop() {
+        Debug.Log("stop");
+
         CancelInvoke("LevelUp");
         CancelInvoke("FillFiller");
         System.Action<Socket> cleanSocket = (socket) => {
             interactionManager.UnregisterInteractable(socket.Interactable);
             // todo: find to reuse or actually remove theese.
             socket.enableInteractions = false;
-            //socket.Socket.GetComponent<XRSocketInteractor>().enableInteractions = false;
         };
 
         foreach (var socket in _grid) { cleanSocket.Invoke(socket); }
@@ -167,7 +172,9 @@ public class BlobGrid : MonoBehaviour
         _started = false;
     }
 
-    void PrepareStart() {
+    public void PrepareStart() {
+        Debug.Log("PrepareStart");
+
         audioSource = GetComponent<AudioSource>();
         sequencialDropFailCount = 0;
         ScoreBoard.ResetBoard();
@@ -179,7 +186,13 @@ public class BlobGrid : MonoBehaviour
                     var position = new Position(x,y,z);
                     var positionVector =  GetPositionVector(position);
                     if (y < startHeight) {
-                        Blob.Instantiate(positionVector, Blob.Colors[(position.X + position.Y + position.Z) % (Blob.Colors.Count - 1)]);
+                        //Debug.Log("Instantiate");
+                        if (network != null) {
+                            network.CreateBlobForMeServerRpc(positionVector);
+                        } else {
+                            Blob.Instantiate(positionVector,
+                                color: Blob.Colors[(position.X + position.Y + position.Z) % (Blob.Colors.Count - 1)]);
+                        }
                     }
                     InitSocketAt(position, positionVector, _grid);
                 }               
@@ -196,17 +209,17 @@ public class BlobGrid : MonoBehaviour
 
         nextWidth.onChanged = () => {
             width = nextWidth.GetInt();
-            Restart();
+            Reset();
         };
 
         nextHeight.onChanged = () => {
             Height = nextHeight.GetInt();
-            Restart();
+            Reset();
         };
 
         nextStartHeight.onChanged = () => {
             startHeight = nextStartHeight.GetInt();
-            Restart();
+            Reset();
         };
         
         dropDelay.onChanged = () => {
@@ -304,7 +317,6 @@ public class BlobGrid : MonoBehaviour
             return;
         }    
         ScoreBoard.ApplyScore();
-
         // Fill
         for(int x = 0; x < width; x++) {
             int y = 0;
@@ -312,7 +324,11 @@ public class BlobGrid : MonoBehaviour
                 if (_fillerGrid[x,y,z].Blob == null) {
                     var position = new Position(x,y,z);
                     var vector = GetPositionVector(position, fillerGridYPositionRelative + Height); 
-                    Blob.Instantiate(vector); 
+                    if (network != null) {
+                        network.CreateBlobForMeServerRpc(vector);
+                    } else {
+                        Blob.Instantiate(vector); 
+                    }
                     Invoke("FillFiller", dropDelay.curentValue);
                     return;
                 }

@@ -5,9 +5,12 @@ using System.Linq;
 
 public class AIWoodChopper : AI
 {
-    public override float Speed { get; set; } =  1.5f;
+    AIWoodChopper() {
+        Speed = 1.5f;
+    }
+    //protected override float Speed { get; set; } =  1.5f;
 
-   protected override void CalculateWhatToDo() {
+    protected override void CalculateWhatToDo() {
         foreach (Hand hand in _hands) {
             if (hand.IsIdle()) {
                 var occupied = _grid.All()

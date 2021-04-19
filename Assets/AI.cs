@@ -17,8 +17,8 @@ public class AI : MonoBehaviour {
     protected List<Hand> _hands = new List<Hand>();
 
     protected Rigidbody _rigidBody;
-
-    public virtual float Speed { get; set; } =  2.2f;
+    
+    protected virtual float Speed { get; set; } =  2.2f;
 
     public void AssignToGrid(BlobGrid grid) {
         _grid = grid;

@@ -5,9 +5,13 @@ using System.Linq;
 
 public class AITant : AI
 {
-    public override float Speed { get; set; } =  0.5f;
+    public AITant() {
+        Speed = 0.5f;
+    }
 
-   protected override void CalculateWhatToDo() {
+    //protected override float Speed { get; set; } =  0.5f;
+
+    protected override void CalculateWhatToDo() {
         foreach (Hand hand in _hands) {
             if (hand.IsIdle()) {
                 var occupied = _grid.All()

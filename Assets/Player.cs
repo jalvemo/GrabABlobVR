@@ -6,7 +6,6 @@ using MLAPI.NetworkVariable;
 using UnityEngine;
 public class Player : NetworkBehaviour
 {
-
     public NetworkVariableVector3 Position = new NetworkVariableVector3(new NetworkVariableSettings
     {
         WritePermission = NetworkVariablePermission.ServerOnly,
@@ -32,7 +31,7 @@ public class Player : NetworkBehaviour
         }
     }
 
-    [ServerRpc]
+    [ServerRpc(RequireOwnership = false)]
     void SubmitPositionRequestServerRpc(ServerRpcParams rpcParams = default)
     {
         Position.Value = GetRandomPositionOnPlaneLow();
@@ -44,7 +43,7 @@ public class Player : NetworkBehaviour
     }
     static Vector3 GetRandomPositionOnPlaneLow()
     {
-        return new Vector3(Random.Range(-2f, 0f), 1f, 0f);
+        return new Vector3(Random.Range(-2f, 0f), 1.5f, 0f);
     }
 
     void Update()

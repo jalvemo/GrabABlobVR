@@ -46,7 +46,7 @@ public class ScoreBoard : MonoBehaviour
     public void ApplyScore() {
         var blobCount = _combo.Sum(_ => _.Count);
         var scoreToAdd = blobCount * _combo.Count;
-        Debug.Log("apply score blobs: " + _combo.Sum(_ => _.Count) + " X" + _combo.Count() + " Combo = " + scoreToAdd);
+        //Debug.Log("apply score blobs: " + _combo.Sum(_ => _.Count) + " X" + _combo.Count() + " Combo = " + scoreToAdd);
         _combo = new List<List<Blob>>();
         Score += scoreToAdd;
         UpdateText();

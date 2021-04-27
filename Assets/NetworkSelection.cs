@@ -26,7 +26,6 @@ public class NetworkSelection : NetworkBehaviour
     public GameObject ClientAI;
 
     public XRRig xrRig;
-    public XRInteractionManager InteractionManager;
 
     private bool _runnigOnPc = false;
     public ulong? ClientOwnerId = null;
@@ -178,11 +177,7 @@ public class NetworkSelection : NetworkBehaviour
         HostGrid.Stop();
         ClientGrid.Stop();  
 
-        var blobs = FindObjectsOfType<Blob>();
-        Debug.Log("unbregister all blob interactables. count: " + blobs.Count());
-        foreach (var blob in blobs) {
-            InteractionManager.UnregisterInteractable(blob.Interactable);
-        }
+        //var blobs = FindObjectsOfType<Blob>();
         
         if (IsServer) {
             Debug.Log("stop server");

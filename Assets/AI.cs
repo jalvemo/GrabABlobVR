@@ -124,7 +124,13 @@ public class AI : MonoBehaviour {
                             
                             hand.MoveTo = null;
                         } else {
-                            Debug.Log("EHHH what do we do now?");
+                            Debug.Log("EHHH this should not happen. what do we do now? reset");
+                            if (hand.Blob != null) {
+                                hand.ReleseBlob();
+                            }
+                            hand.Take = null;
+                            hand.MoveTo = null;
+                        
                         }
                     } else {
                         var path = target - hand.Position; // vector beween the hand and destination

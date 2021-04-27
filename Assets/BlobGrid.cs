@@ -14,6 +14,16 @@ using MLAPI;
 sounds: 
 https://mixkit.co/free-sound-effects/game/?page=2
 
+
+music inspo:
+https://www.epidemicsound.com/track/jsaRbhn32x/
+https://www.epidemicsound.com/track/VDlqEXf2tP/
+https://www.epidemicsound.com/track/lAhCbEuPMK/
+https://www.epidemicsound.com/track/OGShqkVgkj/
+https://www.epidemicsound.com/track/PpCfiCdTi1/
+https://www.youtube.com/watch?v=7qqmRN198JU&ab_channel=AllNintendoMusic
+https://youtu.be/PvSfqBJi0ss?t=3164
+
 To-do list:
 
 
@@ -23,6 +33,7 @@ bugs
 * all blobs dont go in to a combo if one blabb is falling from high. connecting blobs disapear before far falling blob connects. 
 
 small thing:
+* if you holdon to a blob, or released it were something is supposed to fall to, make the falling blob be cached on the above slot.
 
 bigger things
 * penelty when loosing a ball. big black block. lives / cieling (fall out) life counter 
@@ -102,10 +113,11 @@ public class BlobGrid : MonoBehaviour
     public AudioClip fallSound;
     public AudioClip levelUpSound;
 
-    int width = 3;
+    int width = 4;
+    int depth = 2;
     public int Height = 6;
     int startHeight = 1;
-    float distance = 0.3f;//0.275f;
+    float distance = 0.3f;//0.275f; // distance between blob sockets
     
     public SocketSelector removeThresholdSelector;
     public SocketSelector dropDelay;
@@ -123,11 +135,12 @@ public class BlobGrid : MonoBehaviour
 
     private bool _started = false;
 
+    public bool Started { get{return _started; } }
 
     ////// multiplayer properies START //////////////
     public NetworkSelection network = null;
     ////// multiplayer properies END //////////////
-
+    
     private void LevelUp() {
         Invoke("LevelUp", levelUpWaitSeconds);
         dropDelay.curentValue = dropDelay.curentValue * levelSpeedChange;
@@ -136,18 +149,21 @@ public class BlobGrid : MonoBehaviour
         ScoreBoard.LevelUp();
     }
 
-    private Blob AIPickUp(Position position) {
-        var socket = SocketAt(position);
-        var blob = socket.Blob;
-        blob.SetGrabLayer(Layers.OUT);
-        //socket.Blob = null;
-        //StartCoroutine(0.1f, () => blob.Rigidbody.MovePosition(new Vector3(0,10,0)));       
-        return blob;
-    }
-    public void AIPlace(Blob blob, Position position) {
-        blob.Rigidbody.MovePosition(_grid[position.X, position.Y, position.Z].transform.position);
-        blob.SetGrabLayer(Layers.KEEP);
-    }
+    // public Blob AIPickUp(Position position) {
+    //     var socket = SocketAt(position);
+    //     var blob = socket.Blob;
+    //     // blob.SetGrabLayer(Layers.OUT);
+    //     if(!_started) {
+    //         StartGame();
+    //     }
+    //     //socket.Blob = null;
+    //     //StartCoroutine(0.1f, () => blob.Rigidbody.MovePosition(new Vector3(0,10,0)));       
+    //     return blob;
+    // }
+    // public void AIPlace(Blob blob, Position position) {
+    //     blob.Rigidbody.MovePosition(_grid[position.X, position.Y, position.Z].transform.position);
+    //     blob.SetGrabLayer(Layers.KEEP);
+    // }
 
     public void Reset() {
         Debug.Log("Reset");
@@ -160,14 +176,16 @@ public class BlobGrid : MonoBehaviour
 
         CancelInvoke("LevelUp");
         CancelInvoke("FillFiller");
-        System.Action<Socket> cleanSocket = (socket) => {
-            interactionManager.UnregisterInteractable(socket.Interactable);
-            // todo: find to reuse or actually remove theese.
-            socket.enableInteractions = false;
-        };
-
-        foreach (var socket in _grid) { cleanSocket.Invoke(socket); }
-        foreach (var socket in _fillerGrid) { cleanSocket.Invoke(socket); }
+        foreach (var socket in _grid.Cast<Socket>().Concat(_fillerGrid.Cast<Socket>())) {
+            socket.Blob?.SetGrabLayer(Layers.OUT);
+        }
+        //System.Action<Socket> cleanSocket = (socket) => {
+        //    interactionManager.UnregisterInteractable(socket.Interactable);
+        //    // todo: find to reuse or actually remove theese.
+        //    socket.enableInteractions = false;
+        //};
+        //foreach (var socket in _grid) { cleanSocket.Invoke(socket); }
+        //foreach (var socket in _fillerGrid) { cleanSocket.Invoke(socket); }
 
         _started = false;
     }
@@ -179,10 +197,10 @@ public class BlobGrid : MonoBehaviour
         sequencialDropFailCount = 0;
         ScoreBoard.ResetBoard();
 
-        _grid  = new Socket[width, Height, width];
+        _grid = _grid == null ? new Socket[width, Height, depth] :_grid;
         for(int x = 0; x < width; x++) {
             for(int y = 0; y < Height; y++) {
-                for(int z = 0; z < width; z++) {
+                for(int z = 0; z < depth; z++) {
                     var position = new Position(x,y,z);
                     var positionVector =  GetPositionVector(position);
                     if (y < startHeight) {
@@ -194,18 +212,23 @@ public class BlobGrid : MonoBehaviour
                                 color: Blob.Colors[(position.X + position.Y + position.Z) % (Blob.Colors.Count - 1)]);
                         }
                     }
-                    InitSocketAt(position, positionVector, _grid);
+                    if (_grid[x,y,z] == null) {
+                        InitSocketAt(position, positionVector, _grid);
+                    }
                 }               
             }  
         }
-        _fillerGrid = new Socket[width, 1, width];
-        for(int x = 0; x < width; x++) {
-            int y = 0;
-            for(int z = 0; z < width; z++) {
-                var position = new Position(x,y,z);
-                InitSocketAt(position, GetPositionVector(position, fillerGridYPositionRelative + Height), _fillerGrid, false);
-            }                           
+        if (_fillerGrid == null) {
+            _fillerGrid = new Socket[width, 1, depth];
+            for(int x = 0; x < width; x++) {
+                int y = 0;
+                for(int z = 0; z < depth; z++) {
+                    var position = new Position(x,y,z);
+                    InitSocketAt(position, GetPositionVector(position, fillerGridYPositionRelative + Height), _fillerGrid, false);
+                }                           
+            }
         }
+        
 
         nextWidth.onChanged = () => {
             width = nextWidth.GetInt();
@@ -229,11 +252,13 @@ public class BlobGrid : MonoBehaviour
             }
         };
     }
-    void StartGame() {
-        _started = true;
+   public void StartGame() {
+       if(!_started) {
+            _started = true;
 
-        Invoke("FillFiller", dropDelay.curentValue);
-        Invoke("LevelUp", levelUpWaitSeconds);
+            Invoke("FillFiller", dropDelay.curentValue);
+            Invoke("LevelUp", levelUpWaitSeconds);
+       }
     }
 
     //public NetworkManager nm;
@@ -310,6 +335,7 @@ public class BlobGrid : MonoBehaviour
     private int sequencialDropFailCount = 0;
 
     void FillFiller() {
+        //Debug.Log("FillFiller");
         // Wait while dropping
         if (_fillPauseDelay > 0.0f) {
             Invoke("FillFiller", _fillPauseDelay);
@@ -320,11 +346,12 @@ public class BlobGrid : MonoBehaviour
         // Fill
         for(int x = 0; x < width; x++) {
             int y = 0;
-            for(int z = 0; z < width; z++) {
+            for(int z = 0; z < depth; z++) {
                 if (_fillerGrid[x,y,z].Blob == null) {
                     var position = new Position(x,y,z);
                     var vector = GetPositionVector(position, fillerGridYPositionRelative + Height); 
                     if (network != null) {
+                        //Debug.Log("new blob : position : " + position);
                         network.CreateBlobForMeServerRpc(vector);
                     } else {
                         Blob.Instantiate(vector); 
@@ -338,7 +365,7 @@ public class BlobGrid : MonoBehaviour
         bool failed = false;
         for(int x = 0; x < width; x++) {
             int y = 0;
-            for(int z = 0; z < width; z++) {
+            for(int z = 0; z < depth; z++) {
                 var lowestFree = FindLowestFreeSocketOnTop(x, z); 
                 _fillerGrid[x,y,z].Blob.SetGrabLayer(Layers.FALL);             
                 _fillerGrid[x,y,z].Blob = null;
@@ -380,6 +407,7 @@ public class BlobGrid : MonoBehaviour
             _.GetComponent<AI>()?.AssignToGrid(this);
             var droppedBlob = _.GetComponent<Blob>();
             if (droppedBlob != null) { 
+                //Debug.Log("socket got blob " + droppedBlob.Color);
                 socket.Blob = droppedBlob;
                 if (connectionListener) {
                     StartCoroutine(checkForConnctedSocketDrop(socket, 0.1f)); //0.1 allows some time to drop 2 connected blobs
@@ -387,9 +415,10 @@ public class BlobGrid : MonoBehaviour
             }
         });
 
-        socket.onSelectExited.AddListener((_) => { // move to socket..
+        socket.onSelectExited.AddListener((_) => { // move to socket..            
             socket.Blob = null;
-            if (!_started) {
+            if(_.GetComponent<XRGrabInteractable>()?.interactionLayerMask == Layers.KEEP && !_started) { // interactionLayerMask so we dont start when we clear the board.... special call for AI that has another layer picing up. better solution would be nice, maybe tie blobs to a match id ???? 
+            //if(!_started) {
                 StartGame();
             }
         });
@@ -553,8 +582,9 @@ public class BlobGrid : MonoBehaviour
     } 
 
     private Vector3 GetPositionVector(Position position, int yStart = 0) {
-        float offset = (width - 1) * distance / 2;
-        return new Vector3(position.X * distance - offset, (position.Y + yStart)* distance + 0.5f, position.Z * distance - offset) + this.transform.position;
+        float dx = (width - 1) * distance / 2;
+        float dz = (depth - 1) * distance / 2;
+        return new Vector3(position.X * distance - dx, (position.Y + yStart)* distance + 0.5f, position.Z * distance - dz) + this.transform.position;
     }
 
     private List<Socket> ConnectedSockets(Socket socket, HashSet<Socket> visited = null) {
@@ -574,7 +604,7 @@ public class BlobGrid : MonoBehaviour
         return result.ToList();
     } 
 
-    private bool PositionInGrid(Position p) => p.X >= 0 && p.Y >= 0 && p.Z >= 0 && p.X < width && p.Y < Height && p.Z < width;
+    private bool PositionInGrid(Position p) => p.X >= 0 && p.Y >= 0 && p.Z >= 0 && p.X < width && p.Y < Height && p.Z < depth;
     public Socket SocketAt(Position p) {
         if (PositionInGrid(p)) {
             return _grid[p.X,p.Y,p.Z];

@@ -13,30 +13,30 @@ public class Blob : NetworkBehaviour
     public static GameObject NetworkPrefab { get { return _networkPrefab ?? (_networkPrefab = Resources.Load<GameObject>("BlobNetwork")); } }
     public static GameObject Prefab { get { return _prefab ?? (_prefab = Resources.Load<GameObject>("Blob")); } }
     public static List<Color> Colors = new List<Color> {Color.green, Color.magenta, Color.red, Color.yellow, Color.blue};
+    //public static List<Color> Colors = new List<Color> {Color.magenta, Color.yellow};
     
     private NetworkVariable<Color> _color = new NetworkVariable<Color>(new NetworkVariableSettings {WritePermission = NetworkVariablePermission.OwnerOnly}, Color.white);
     private NetworkVariable<Vector3?> _scale = new NetworkVariable<Vector3?>(new NetworkVariableSettings {WritePermission = NetworkVariablePermission.OwnerOnly}, value:null);
-
-    public static Blob Instantiate(Vector3 vector, Color? color = null, ulong? clientOwnerId = null) {    
-        
-        if (!NetworkManager.Singleton.IsServer && NetworkManager.Singleton.IsClient) { 
-            //Debug.Log("IsClient, skipp");
-            return null;
-        }  
+    public XRBaseInteractable Interactable {
+        get { return GetComponent<XRBaseInteractable>(); }
+    }
+    public static Blob Instantiate(Vector3 vector, Color? color = null, ulong? clientOwnerId = null) {            
         Blob blob = null;
-         if (NetworkManager.Singleton.IsServer) { 
+        if (NetworkManager.Singleton.IsServer) { 
             //Debug.Log("creating server instance");
             blob = Instantiate(NetworkPrefab, vector, new Quaternion()).GetComponent<Blob>();
             var networkObject = blob.GetComponent<NetworkObject>();    
             if (clientOwnerId != null) {
-                Debug.Log("creating server instance for id;" + clientOwnerId.Value);
+                //Debug.Log("creating server instance for id;" + clientOwnerId.Value);
                 networkObject.SpawnWithOwnership(clientOwnerId.Value);
             } else {
                 //Debug.Log("creating server instance for me;");
                 networkObject.Spawn();
             }
+        } else if (NetworkManager.Singleton.IsClient){
+            return null;
         } else {
-            //return null;
+            //Debug.Log("creating local blob instance");
             //Debug.Log("creating local instance");
             blob = Instantiate(Prefab, vector, new Quaternion()).GetComponent<Blob>();
             blob.Color = color ?? Colors[Random.Range(0, Colors.Count)];
@@ -59,7 +59,6 @@ public class Blob : NetworkBehaviour
     }
     public override void NetworkStart() {
         if (IsOwner) {    
-            Debug.Log("I am Owner, setting stuff");
             SetGrabLayer(Layers.KEEP);
             _color.Value = Colors[Random.Range(0, Colors.Count)];
             _scale.Value = new Vector3(0.182641f, 0.182641f, 0.182641f);
@@ -93,7 +92,7 @@ public class Blob : NetworkBehaviour
         Rigidbody.MovePosition(Rigidbody.position + new Vector3(0,2,0));
 
         _scale.Value = _scale.Value * 0.7f;
-        Color = Color.Lerp(Color, Color.black, 0.8f);
+        Color = Color.Lerp(Color, Color.white, 0.8f);
     }
     
 }

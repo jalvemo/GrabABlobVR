@@ -8,6 +8,9 @@ using System.Linq;
 public class AI : MonoBehaviour {
     protected static System.Random random = new System.Random();
     
+    private Vector3 _startPosition;
+    private Vector3 _startScale;
+    private Vector3 _startRotation;
     protected Hand _left = new Hand();
     protected Hand _right = new Hand();
     protected BlobGrid _grid;
@@ -28,11 +31,13 @@ public class AI : MonoBehaviour {
         Debug.Log("scale: " + transform.localScale);
         transform.localScale = transform.localScale * 3.0f;
         _rigidBody = GetComponent<Rigidbody>();
-        
+        _grid.StartGame();
     }
 
     void Start() {
-        
+        _startPosition = this.transform.localPosition;
+        _startScale = this.transform.localScale;
+        _startRotation = this.transform.localEulerAngles;
     }
     protected bool BothHandsFree() {
         return _hands.All(_ => _.IsFree());
@@ -89,6 +94,14 @@ public class AI : MonoBehaviour {
     }
     void FixedUpdate() {
         if (_grid != null) {
+            if (!_grid.Started) { // STOP and deassign reset from grid
+                this.transform.localPosition =_startPosition;
+                this.transform.localScale =_startScale;
+                this.transform.localEulerAngles =_startRotation;
+                _rigidBody.velocity = Vector3.zero;
+                _grid = null;                
+                return;
+            }
             OnceOnStart();
 
             CalculateWhatToDo();

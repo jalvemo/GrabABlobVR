@@ -97,7 +97,7 @@ public class NetworkSelection : NetworkBehaviour
         NetworkManager.Singleton.OnClientConnectedCallback += (id) => {
             Debug.Log("Client joined: " + id);
             Debug.Log("Connected clients: " + NetworkManager.Singleton.ConnectedClients.Count);
-            Debug.Log("Connected clients: " + NetworkManager.Singleton.ConnectedClients.Keys);
+            Debug.Log("Connected clients: [" + string.Join(", ", NetworkManager.Singleton.ConnectedClients.Keys) + "]");
             if  ((IsServer || IsHost) && NetworkManager.Singleton.ConnectedClients.Count == 2) {
                 Debug.Log("Start game: " + NetworkManager.Singleton.ConnectedClients.Count);
                 

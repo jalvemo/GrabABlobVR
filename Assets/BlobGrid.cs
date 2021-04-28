@@ -142,28 +142,13 @@ public class BlobGrid : MonoBehaviour
     ////// multiplayer properies END //////////////
     
     private void LevelUp() {
+        if (!_started) {return;}
         Invoke("LevelUp", levelUpWaitSeconds);
         dropDelay.curentValue = dropDelay.curentValue * levelSpeedChange;
         audioSource.PlayOneShot(levelUpSound);
         Debug.Log("Level up speed: " + dropDelay.curentValue);
         ScoreBoard.LevelUp();
     }
-
-    // public Blob AIPickUp(Position position) {
-    //     var socket = SocketAt(position);
-    //     var blob = socket.Blob;
-    //     // blob.SetGrabLayer(Layers.OUT);
-    //     if(!_started) {
-    //         StartGame();
-    //     }
-    //     //socket.Blob = null;
-    //     //StartCoroutine(0.1f, () => blob.Rigidbody.MovePosition(new Vector3(0,10,0)));       
-    //     return blob;
-    // }
-    // public void AIPlace(Blob blob, Position position) {
-    //     blob.Rigidbody.MovePosition(_grid[position.X, position.Y, position.Z].transform.position);
-    //     blob.SetGrabLayer(Layers.KEEP);
-    // }
 
     public void Reset() {
         Debug.Log("Reset");
@@ -179,14 +164,6 @@ public class BlobGrid : MonoBehaviour
         foreach (var socket in _grid.Cast<Socket>().Concat(_fillerGrid.Cast<Socket>())) {
             socket.Blob?.SetGrabLayer(Layers.OUT);
         }
-        //System.Action<Socket> cleanSocket = (socket) => {
-        //    interactionManager.UnregisterInteractable(socket.Interactable);
-        //    // todo: find to reuse or actually remove theese.
-        //    socket.enableInteractions = false;
-        //};
-        //foreach (var socket in _grid) { cleanSocket.Invoke(socket); }
-        //foreach (var socket in _fillerGrid) { cleanSocket.Invoke(socket); }
-
         _started = false;
     }
 
@@ -261,52 +238,8 @@ public class BlobGrid : MonoBehaviour
        }
     }
 
-    //public NetworkManager nm;
     void Start()
     {   
-        /*
-        Debug.Log("test");    
-        StartCoroutine(1.0f, ()=>{
-            if (Host) {
-                Debug.Log("Start Host");
-                nm.StartHost();
-                //NetworkManager.Singleton.StartHost();
-            } else {
-                Debug.Log("Start client");
-                nm.StartClient();
-                //NetworkManager.Singleton.StartClient();
-            }
-        });
-
-
-        System.Action move = ()=>{
-            if (NetworkManager.Singleton.ConnectedClients.TryGetValue(NetworkManager.Singleton.LocalClientId, out var networkedClient))
-            {
-                var player = networkedClient.PlayerObject.GetComponent<Player>();
-                if (player)
-                {
-                    player.Move();
-                }
-            }
-        };
-
-        System.Action clientCheck = null;
-        clientCheck = ()=>{
-            if (NetworkManager.Singleton.IsClient || NetworkManager.Singleton.IsServer) {
-                move();
-
-                Debug.Log("client count: " + NetworkManager.Singleton.ConnectedClientsList.Count);
-                foreach (var client in  NetworkManager.Singleton.ConnectedClientsList) {
-                    Debug.Log("client: " + client.ClientId + ", me: " + NetworkManager.Singleton.LocalClientId);
-                }
-                StartCoroutine(5.0f, clientCheck);
-            }
-        };
-        StartCoroutine(5.0f, clientCheck);
-
-        
-        StartCoroutine(5.0f, () => { PrepareStart(); });
-        */
         PrepareStart(); 
     }
 
@@ -335,6 +268,7 @@ public class BlobGrid : MonoBehaviour
     private int sequencialDropFailCount = 0;
 
     void FillFiller() {
+        if (!_started) {return;}
         //Debug.Log("FillFiller");
         // Wait while dropping
         if (_fillPauseDelay > 0.0f) {
@@ -381,6 +315,7 @@ public class BlobGrid : MonoBehaviour
             sequencialDropFailCount++;
             if (sequencialDropFailCount >= gameOverDropFailThreshhold) {
                 audioSource.PlayOneShot(gameOver);
+                Debug.Log("Game over");
                 Stop();
             } else {
                 audioSource.PlayOneShot(noFit);
@@ -473,12 +408,12 @@ public class BlobGrid : MonoBehaviour
 
 
         // push a bit to not stuck while falling // todo maybe remove delay?
-        StartCoroutine(0.1f, () => {
-             foreach (var blob in blobs) {
-                    blob.Rigidbody.MovePosition(blob.Rigidbody.position + new Vector3(0.05f, 0.05f, 0.05f));
-                    //rigidBody.AddForce(new Vector3(10.05f, 10.05f, 10.05f));
-                }
-        });
+        //StartCoroutine(0.1f, () => {
+        //     foreach (var blob in blobs) {
+        //            blob.Rigidbody.MovePosition(blob.Rigidbody.position + new Vector3(0.05f, 0.05f, 0.05f));
+        //            //rigidBody.AddForce(new Vector3(10.05f, 10.05f, 10.05f));
+        //        }
+        //});
 
         //// fall above logic 
         //(1) lowest sockets with the same x z cordinate (lowest socket dropping out will start catching falling blobs), there should be a nicer way.... 
@@ -488,9 +423,6 @@ public class BlobGrid : MonoBehaviour
             var key = (s.GridPosition.X, s.GridPosition.Z);
             socketsByXZ[key] = socketsByXZ.ContainsKey(key) ? socketsByXZ[key] : s;
         }
-        //var socketsByXZPosition = sockets
-        //    .GroupBy( n => (n.Position.X, n.Position.Z))
-        //    .OrderByDescending((key, n) => n.Position.Y);
         foreach(var bottonSocket in socketsByXZ.Values) 
         {
             FallAbove(bottonSocket);

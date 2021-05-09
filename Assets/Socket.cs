@@ -8,6 +8,9 @@ public class Socket : XRSocketInteractor
     public Position GridPosition;
     public Blob Blob;
 
+    public bool Hoovering = false;
+    //public bool AcceptCatchFalling {get{return !Hoovering && Blob == null;}}
+
     public XRBaseInteractable Interactable {
         get { return GetComponent<XRBaseInteractable>(); }
     }
@@ -28,14 +31,15 @@ public class Socket : XRSocketInteractor
     }
 
     protected override void OnHoverEntered(HoverEnterEventArgs evetArgs){
-        var blob = evetArgs.interactable.GetComponent<Blob>();
-        //if (blob != null && blob.Layer != FALL) {
-        //    Hoovering = true;
-        //}
+        var blobEntering = evetArgs.interactable.GetComponent<Blob>();
+        if (blobEntering != null && blobEntering.State == BlobState.PICKED_UP) {
+            Hoovering = true;
+        }
 
         base.OnHoverEntered(evetArgs);        
     }
      protected override void OnHoverExited(HoverExitEventArgs evetArgs){
+         Hoovering = false;
         base.OnHoverExited(evetArgs);        
     }
     protected override void OnSelectEntering(SelectEnterEventArgs evetArgs)
@@ -45,6 +49,7 @@ public class Socket : XRSocketInteractor
     }
     protected override void OnSelectEntered(SelectEnterEventArgs evetArgs)
     {
+        Hoovering = false;
         //Debug.Log("onSelectEntered " + interactable);
         base.OnSelectEntered(evetArgs);
     }

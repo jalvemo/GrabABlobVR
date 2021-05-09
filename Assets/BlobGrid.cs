@@ -169,7 +169,9 @@ public class BlobGrid : MonoBehaviour
         CancelInvoke("LevelUp");
         CancelInvoke("FillFiller");
         foreach (var socket in _grid.Cast<Socket>().Concat(_fillerGrid.Cast<Socket>())) {
-            socket.Blob?.SetGrabLayer(Layers.OUT);
+            if (socket.Blob != null) {
+                socket.Blob.State = BlobState.POPPED;
+            }
         }
         _started = false;
     }
@@ -304,7 +306,7 @@ public class BlobGrid : MonoBehaviour
             int y = 0;
             for(int z = 0; z < _depth; z++) {
                 var lowestFree = FindLowestFreeSocketOnTop(x, z); 
-                _fillerGrid[x,y,z].Blob.SetGrabLayer(Layers.FALL);             
+                _fillerGrid[x,y,z].Blob.State = BlobState.FALLING;             
                 _fillerGrid[x,y,z].Blob = null;
                 if (lowestFree != null ){
                     CatchFallingBlobs(new List<Socket>(){ lowestFree }); 
@@ -407,7 +409,7 @@ public class BlobGrid : MonoBehaviour
         // drop out
         foreach (var blob in blobs) {
             //blob.Destroy();
-            blob.SetGrabLayer(Layers.OUT);
+            blob.State = BlobState.POPPED; 
             blob.MoveTowards(DropPoint.transform.position);
             //StartCoroutine(1f,() => {
             //    //blob.Rigidbody.MovePosition(new Vector3(1.58f, 2f, 2.7f));
@@ -454,7 +456,7 @@ public class BlobGrid : MonoBehaviour
 
         foreach (var fallingBlob in fallingBlobs)
         {
-            fallingBlob.SetGrabLayer(Layers.FALL);
+            fallingBlob.State = BlobState.FALLING;
         }
         foreach (var fallingSocket in socketsWithFallingBlobs)
         {
@@ -488,7 +490,7 @@ public class BlobGrid : MonoBehaviour
             nextCatchingSocket.interactionLayerMask = Layers.KEEP;
             // make the catch blob not falling. 
 
-            catchedBlob.SetGrabLayer(Layers.KEEP);
+            catchedBlob.State = BlobState.IN_SOCKET;
             CatchFallingBlobs(catchingSockets.Skip(1).ToList());
         };
         nextCatchingSocket.selectEntered.AddListener(catchFallingBlob);
@@ -503,7 +505,7 @@ public class BlobGrid : MonoBehaviour
         }
 
         for(int i = Height - 2; i >= 0 ; i--) {
-            if (_grid[x, i, z].Blob != null)
+            if (_grid[x, i, z].Blob != null || _grid[x, i, z].Hoovering)
             {
                 return _grid[x, i + 1, z];
             }

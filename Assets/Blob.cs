@@ -19,19 +19,41 @@ public class Blob : NetworkBehaviour
     
     private NetworkVariable<Color> _color = new NetworkVariable<Color>(new NetworkVariableSettings {WritePermission = NetworkVariablePermission.OwnerOnly}, Color.white);
     private NetworkVariable<Vector3?> _scale = new NetworkVariable<Vector3?>(new NetworkVariableSettings {WritePermission = NetworkVariablePermission.OwnerOnly}, value:null);
+    
+    
+    public Rigidbody Rigidbody;
+    private XRGrabInteractable _grabInteractable;
+    private LayerMask _grabLayer { set{ _grabInteractable.interactionLayerMask = value; } }
+
     public XRBaseInteractable Interactable {
         get { return GetComponent<XRBaseInteractable>(); }
+    } 
+    public BlobState _state = BlobState.RELEASED;
+    public BlobState State {
+        get { return _state; }
+        set {
+            _state = value;
+            switch (value)
+            {
+                case BlobState.FALLING:
+                    _grabLayer = Layers.FALL;
+                    break;
+                case BlobState.IN_SOCKET:
+                case BlobState.AI_RELEASED:
+                    _grabLayer = Layers.KEEP;
+                    break;
+                case BlobState.POPPED:
+                case BlobState.NETWORK_CONTROLLED:
+                case BlobState.AI_PICKED_UP:
+                    _grabLayer = Layers.OUT;
+                    break;
+                case BlobState.PICKED_UP:
+                case BlobState.RELEASED:
+                default:
+                    break;
+            }
+        }
     }
-    
-    public enum State {
-        IN_SOCKET,
-        FALLING,
-        PICKED_UP,
-        POPPED,
-        RELEASED,
-        NETWORK_CONTROLLED,
-    }
-
     public static Blob Instantiate(Vector3 vector, Color? color = null, ulong? clientOwnerId = null) {            
         Blob blob = null;
         if (NetworkManager.Singleton.IsServer) { 
@@ -52,13 +74,44 @@ public class Blob : NetworkBehaviour
             //Debug.Log("creating local instance");
             blob = Instantiate(Prefab, vector, new Quaternion()).GetComponent<Blob>();
             blob.Color = color ?? Colors[Random.Range(0, Colors.Count)];
-            blob.SetGrabLayer(Layers.KEEP);
-            blob.Rigidbody.useGravity = true;
         }    
 
         return blob;
     }
+     private void Start() {
+        Rigidbody = GetComponent<Rigidbody>();
+        _grabInteractable = GetComponent<XRGrabInteractable>();
 
+        Interactable.selectEntered.AddListener((SelectEnterEventArgs args) => {
+            if (typeof(XRBaseControllerInteractor).IsAssignableFrom(args.interactor.GetType())) {
+                State = BlobState.PICKED_UP;            
+            }
+        });
+        Interactable.selectExited.AddListener((SelectExitEventArgs args) => {
+            if (typeof(XRBaseControllerInteractor).IsAssignableFrom(args.interactor.GetType())) {
+                State = BlobState.RELEASED;
+            }        
+        });
+        
+        State = BlobState.RELEASED;
+        Rigidbody.useGravity = true;
+        _grabLayer = Layers.KEEP;
+
+    }
+    public override void NetworkStart() {
+        if (IsOwner) {    
+            _color.Value = Colors[Random.Range(0, Colors.Count)];
+            _scale.Value = StartScale;
+
+            State = BlobState.RELEASED;
+            Rigidbody.useGravity = true;
+            _grabLayer = Layers.KEEP;
+        } else {
+            State = BlobState.NETWORK_CONTROLLED;
+            Rigidbody.useGravity = false;
+        }
+    }
+       
     public Blob() {
         _color.OnValueChanged += (from, to) => {
             GetComponent<Renderer>().material.color = to; 
@@ -68,25 +121,8 @@ public class Blob : NetworkBehaviour
                 transform.localScale = to.Value;
             }
         };
-    
-        //Interactable.selectEntered.AddListener((SelectEnterEventArgs args) => {
-        //    
-        //});
-        //Interactable.selectExited.AddListener((SelectExitEventArgs args) => {
-        //    
-        //});
     }
-    public override void NetworkStart() {
-        if (IsOwner) {    
-            SetGrabLayer(Layers.KEEP);
-            _color.Value = Colors[Random.Range(0, Colors.Count)];
-            _scale.Value = StartScale;
-            Rigidbody.useGravity = true;
-        } else {
-            SetGrabLayer(Layers.OUT);
-            Rigidbody.useGravity = false;
-        }
-   }
+        
     private void Update() {
         _scale.Value = StartScale * (1 + Beats.GetPulseTriangle() / 10);
     }
@@ -115,28 +151,15 @@ public class Blob : NetworkBehaviour
     public Color Color {
         get { return _color.Value; }
         set { _color.Value = value; }
-    }
-      
-    public void SetGrabLayer(LayerMask layer) {
-        GetComponent<XRGrabInteractable>().interactionLayerMask = layer;
-    }
-
-    public Rigidbody Rigidbody {
-        get { return GetComponent<Rigidbody>();}
-    }
+    }      
 
     public void Destroy() {
         Destroy(gameObject);
-        //var newLocal = Instantiate(transform.position, Color);
-        //newLocal.SetGrabLayer(Layers.OUT);
-
     }
 
 
     public void SetDropOutVisual() {
-        Rigidbody.MovePosition(Rigidbody.position + new Vector3(0,2,0));
-
-        _scale.Value = StartScale * 0.7f;
+        //Rigidbody.MovePosition(Rigidbody.position + new Vector3(0,2,0));
         Color = Color.Lerp(Color, Color.white, 0.7f);
     }
     

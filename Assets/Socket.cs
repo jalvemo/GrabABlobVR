@@ -27,15 +27,26 @@ public class Socket : XRSocketInteractor
         base.OnDisable();
     }
 
-    protected override void OnSelectEntering(XRBaseInteractable interactable)
+    protected override void OnHoverEntered(HoverEnterEventArgs evetArgs){
+        var blob = evetArgs.interactable.GetComponent<Blob>();
+        //if (blob != null && blob.Layer != FALL) {
+        //    Hoovering = true;
+        //}
+
+        base.OnHoverEntered(evetArgs);        
+    }
+     protected override void OnHoverExited(HoverExitEventArgs evetArgs){
+        base.OnHoverExited(evetArgs);        
+    }
+    protected override void OnSelectEntering(SelectEnterEventArgs evetArgs)
     {
         //Debug.Log("OnSelectEntering " + interactable);
-        base.OnSelectEntering(interactable);
+        base.OnSelectEntering(evetArgs);
     }
-    protected override void OnSelectEntered(XRBaseInteractable interactable)
+    protected override void OnSelectEntered(SelectEnterEventArgs evetArgs)
     {
         //Debug.Log("onSelectEntered " + interactable);
-        base.OnSelectEntered(interactable);
+        base.OnSelectEntered(evetArgs);
     }
 
     private void StoreArrow(XRBaseInteractable interactable)

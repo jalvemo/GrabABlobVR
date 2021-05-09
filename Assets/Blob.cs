@@ -8,6 +8,8 @@ using MLAPI.Prototyping;
 
 public class Blob : NetworkBehaviour
 {
+    private Vector3? _moveTowards = null;
+    private static Vector3 StartScale = new Vector3(0.18f, 0.18f, 0.18f);
     private static GameObject _networkPrefab;
     private static GameObject _prefab;
     public static GameObject NetworkPrefab { get { return _networkPrefab ?? (_networkPrefab = Resources.Load<GameObject>("BlobNetwork")); } }
@@ -20,6 +22,16 @@ public class Blob : NetworkBehaviour
     public XRBaseInteractable Interactable {
         get { return GetComponent<XRBaseInteractable>(); }
     }
+    
+    public enum State {
+        IN_SOCKET,
+        FALLING,
+        PICKED_UP,
+        POPPED,
+        RELEASED,
+        NETWORK_CONTROLLED,
+    }
+
     public static Blob Instantiate(Vector3 vector, Color? color = null, ulong? clientOwnerId = null) {            
         Blob blob = null;
         if (NetworkManager.Singleton.IsServer) { 
@@ -56,23 +68,48 @@ public class Blob : NetworkBehaviour
                 transform.localScale = to.Value;
             }
         };
+    
+        //Interactable.selectEntered.AddListener((SelectEnterEventArgs args) => {
+        //    
+        //});
+        //Interactable.selectExited.AddListener((SelectExitEventArgs args) => {
+        //    
+        //});
     }
     public override void NetworkStart() {
         if (IsOwner) {    
             SetGrabLayer(Layers.KEEP);
             _color.Value = Colors[Random.Range(0, Colors.Count)];
-            _scale.Value = new Vector3(0.182641f, 0.182641f, 0.182641f);
+            _scale.Value = StartScale;
             Rigidbody.useGravity = true;
         } else {
-            SetGrabLayer(Layers.FALL);
+            SetGrabLayer(Layers.OUT);
             Rigidbody.useGravity = false;
         }
    }
     private void Update() {
-       // if (IsOwner) {
-       //    Debug.Log("moving blob up:" + new Vector3(0f, 0.1f * Time.deltaTime , 0f));
-       //    //transform.Translate(new Vector3(0f, 0.2f * Time.deltaTime , 0f));
-       //}
+        _scale.Value = StartScale * (1 + Beats.GetPulseTriangle() / 10);
+    }
+
+    public void MoveTowards(Vector3 destination) {
+        _moveTowards = destination;
+    }
+    private void FixedUpdate() {
+        if (_moveTowards != null) {
+            float distanceToStop = 0.3f;
+            float speed = 2.5f;
+            if(Vector3.Distance(transform.position, _moveTowards.Value) > distanceToStop)
+            {
+                Rigidbody.useGravity = false;
+                transform.LookAt(_moveTowards.Value);
+                Rigidbody.AddRelativeForce(Vector3.forward * speed, ForceMode.Force);
+                
+            } else {
+                Rigidbody.useGravity = true;
+                Rigidbody.AddRelativeForce(Vector3.zero, ForceMode.VelocityChange);
+                _moveTowards = null;
+            }
+        }
     }
 
     public Color Color {
@@ -88,11 +125,19 @@ public class Blob : NetworkBehaviour
         get { return GetComponent<Rigidbody>();}
     }
 
+    public void Destroy() {
+        Destroy(gameObject);
+        //var newLocal = Instantiate(transform.position, Color);
+        //newLocal.SetGrabLayer(Layers.OUT);
+
+    }
+
+
     public void SetDropOutVisual() {
         Rigidbody.MovePosition(Rigidbody.position + new Vector3(0,2,0));
 
-        _scale.Value = _scale.Value * 0.7f;
-        Color = Color.Lerp(Color, Color.white, 0.8f);
+        _scale.Value = StartScale * 0.7f;
+        Color = Color.Lerp(Color, Color.white, 0.7f);
     }
     
 }

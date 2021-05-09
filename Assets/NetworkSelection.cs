@@ -81,13 +81,17 @@ public class NetworkSelection : NetworkBehaviour
                 Debug.Log("dummy stop only");
             }
         }
-    //public override void NetworkStart()
+    public override void NetworkStart() {
+        if (getStartAsServer()) {
+            Debug.Log("Start as server");
+        }
+    }
     public void Start()
     {
-        HostSocket.onSelectEntered.AddListener((_) => { HostGame(); });
-        JoinSocket.onSelectEntered.AddListener((_) => { JoinGame(); });
-        HostSocket.onSelectExited.AddListener((_) => { Disconnect(); });
-        JoinSocket.onSelectExited.AddListener((_) => { Disconnect(); });
+        HostSocket.selectEntered.AddListener((_) => { HostGame(); });
+        JoinSocket.selectEntered.AddListener((_) => { JoinGame(); });
+        HostSocket.selectExited.AddListener((_) => { Disconnect(); });
+        JoinSocket.selectExited.AddListener((_) => { Disconnect(); });
 
         NetworkManager.Singleton.OnServerStarted += () => {
                 Debug.Log("Server started");
@@ -101,7 +105,6 @@ public class NetworkSelection : NetworkBehaviour
             if  ((IsServer || IsHost) && NetworkManager.Singleton.ConnectedClients.Count == 2) {
                 Debug.Log("Start game: " + NetworkManager.Singleton.ConnectedClients.Count);
                 
-
                 StartClientRpc(
                     HostGrid.transform.position,
                     new ClientRpcParams() {
@@ -116,33 +119,8 @@ public class NetworkSelection : NetworkBehaviour
                             TargetClientIds = new ulong[]{NetworkManager.Singleton.ConnectedClients.Keys.ToList()[1]}
                         }
                 });
-
             }
-
-            if  (IsServer) {
-                Debug.Log("Is server");
-            }
-            if  (IsHost) {
-                Debug.Log("Is Host");
-                //HostAI?.SetActive(true);
-                //HostGrid.PrepareStart();
-
-                //ClientGrid.OtherClientOwnerId = id;
-                //ClientGrid.PrepareStart();              
-            }
-            if (id == NetworkManager.Singleton.LocalClientId) {
-                Debug.Log("Is Client");                
-                //ClientAI?.SetActive(true);
-                //ClientGrid.network = this;
-                //ClientGrid.PrepareStart();           
-                //CreateBlobForMeServerRpc(ClientGrid.transform.position + Vector3.up);
-                //todo teleport   
-            } 
-            
         };
-
-        //HostSocket.onSelectExited.AddListener((_) => {});
-        
     }
 
     private void StartServer() {        
@@ -163,9 +141,11 @@ public class NetworkSelection : NetworkBehaviour
                 Debug.Log("Start Client.");
                 HostGrid.Stop();
                 ClientGrid.Stop();  
-                NetworkManager.Singleton.GetComponent<UNetTransport>().ConnectAddress = "192.168.1.190";// "2020 pc ip";
-                //NetworkManager.Singleton.GetComponent<UNetTransport>().ConnectAddress = "192.168.1.146";// "basement"
-            
+                //NetworkManager.Singleton.GetComponent<UNetTransport>().ConnectAddress = "185.113.99.139";// "public";
+                //NetworkManager.Singleton.GetComponent<UNetTransport>().ConnectAddress = "192.168.1.190";// "2020 pc ip";
+                NetworkManager.Singleton.GetComponent<UNetTransport>().ConnectAddress = "192.168.1.146";// "basement"
+                //NetworkManager.Singleton.GetComponent<UNetTransport>().ConnectAddress = "192.168.1.214";// "johan lidingö"
+                Debug.Log("Joining with ConnectAddress: " +  NetworkManager.Singleton.GetComponent<UNetTransport>().ConnectAddress);
 
                 NetworkManager.Singleton.StartClient();
     }
@@ -182,13 +162,14 @@ public class NetworkSelection : NetworkBehaviour
         if (IsServer) {
             Debug.Log("stop server");
             NetworkManager.Singleton.StopServer();
+            StartServer();
         }
         if (IsClient) {
             Debug.Log("stop client");
             NetworkManager.Singleton.StopClient();
         }
         if (IsHost) {
-            Debug.Log("stpp host");
+            Debug.Log("stop host");
             NetworkManager.Singleton.StopHost();
         }
         //Debug.Log("Load Scene");
@@ -207,7 +188,7 @@ public class NetworkSelection : NetworkBehaviour
         if (position == HostGrid.transform.position) {
             Debug.Log("first position");    
             HostGrid.network = IsClient ? this : null; 
-            HostGrid.PrepareStart();  
+            HostGrid.PrepareStart();              
         } else if (position == ClientGrid.transform.position) {
             Debug.Log("seccond position");
             ClientGrid.network = IsClient ? this : null; 
@@ -229,5 +210,11 @@ public class NetworkSelection : NetworkBehaviour
         if (!_runnigOnPc) {
             xrRig.MoveCameraToWorldLocation(cameraDestination);
         }
+    }
+
+    private bool getStartAsServer()
+    {
+        string[] args = System.Environment.GetCommandLineArgs();
+        return args.Any(s => {return s.ToLower() == "server";});
     }
 }

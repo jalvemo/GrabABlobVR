@@ -105,7 +105,7 @@ public class SocketSelector : MonoBehaviour
         else {
             textComponent.text = "" + optionValue;
         }
-        socket.onSelectEntered.AddListener((_) => {
+        socket.selectEntered.AddListener((_) => {
             
             if (optionValue > curentValue) {
 

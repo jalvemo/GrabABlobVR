@@ -52,12 +52,12 @@ public class HandPresence : MonoBehaviour
 
             if (leftGrip != leftGripNew) {
                 leftGrip = leftGripNew;
-                Debug.Log("left grip:" + leftGrip);
+                //Debug.Log("left grip:" + leftGrip);
             }
             
             if (rightGrip != rightGripNew) {
                 rightGrip = rightGripNew;
-                Debug.Log("right grip:" + rightGrip);
+                //Debug.Log("right grip:" + rightGrip);
             }
         }
     }

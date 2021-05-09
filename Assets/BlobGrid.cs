@@ -23,8 +23,14 @@ https://www.epidemicsound.com/track/OGShqkVgkj/
 https://www.epidemicsound.com/track/PpCfiCdTi1/
 https://www.youtube.com/watch?v=7qqmRN198JU&ab_channel=AllNintendoMusic
 https://youtu.be/PvSfqBJi0ss?t=3164
+https://open.spotify.com/track/4AxrlOlmlKducWdz18bLYB?si=LPc0C1jMTGWTdHWptJ-1JA
+
+
+* characta inspo:
+    * https://joslin.artstation.com/projects/KgdLX
 
 To-do list:
+
 
 
 bugs
@@ -33,26 +39,26 @@ bugs
 * all blobs dont go in to a combo if one blabb is falling from high. connecting blobs disapear before far falling blob connects. 
 
 small thing:
+* let the music decide when to drop (on 8), let dificulity dcide how manny. if 1-3 drop first it would counitue fill from 4 on next drop
+
 * if you holdon to a blob, or released it were something is supposed to fall to, make the falling blob be cached on the above slot.
 
 bigger things
+* loosing a ball.
+    * penelty when loosing a ball. big black block. lives / cieling (fall out) life counter
 * penelty when loosing a ball. big black block. lives / cieling (fall out) life counter 
+    * penelty when loosing a ball. big black block. lives / cieling (fall out) life counter
+    * put it in fall grid, regular layer or above..
 * pre game menu, it would be cool if you dont have pre-menu and spawn diectly in the world to fool around. you can configure and join games from tthe world. 
 * game mode 2d would still be fun i think 
-* point counter 
-* difficulity increesed
 * merge connecting blobs visually
-* warning on stak close maxed out (sound? arrow?)
-* hearts in blobs, release to gain health 
-* characta inspo:
-    * https://joslin.artstation.com/projects/KgdLX
+* powerups in blobs, blobs pop and you get power up. 
 * Score should take level/fall-rate in to account. It is a lot easier to do combos in the begining. 
 
 improve working version:
 * background sound
 * sound efects 
 * in game menu (pip boy?)
-* imptove controllers, catch blobs away from hand.
 * environments
 
 
@@ -71,11 +77,11 @@ catch up, player behind might get better items like in marikart. (who is behind 
 box power could be
 * send different kind of blocks to the other player, like pyo pyo stones
 * spawn at the other players stack to change there blobs for a short time, dropping blobs end powerup.
-* throw things at the other player,(dont know what) something that require 
-* fog foe the other players
+* throw things at the other player,(dont know what)
+* fog for the other players
 * pixel camera for the other players hope it is dizzy proof. like this: https://assetstore.unity.com/packages/vfx/shaders/fullscreen-camera-effects/pixelation-65554?aid=1100l355n&gclid=Cj0KCQjwl9GCBhDvARIsAFunhsnxGxkAdjtTEYirZv-vhIGEsPDZ93_kD2XYbR5LK5CI16obsGbkI6kaAp2vEALw_wcB&pubref=UnityAssets%2ADynNew08%2A1723478829%2A67594162255%2A336277500151%2Ag%2A%2A%2Ab%2Ac%2Agclid%3DCj0KCQjwl9GCBhDvARIsAFunhsnxGxkAdjtTEYirZv-vhIGEsPDZ93_kD2XYbR5LK5CI16obsGbkI6kaAp2vEALw_wcB&utm_source=aff
 * release other players fillup.
-* randomise other players stgack
+* randomise other players stack
 * pause fillup
 * big release of random blobs on top of stack
 * randomise a slice of other players stack
@@ -83,6 +89,7 @@ box power could be
 * rotate other players stack keeping the blob relations but a bit confusing
 * AI controllers helping you out.
 * AI controllers sabotaging.
+* make the other playes stack Big / hard to reach. or small hard to be precise
 
 handicap worse player need lesser combos for powerups 
 
@@ -105,7 +112,7 @@ public class BlobGrid : MonoBehaviour
     public GameObject SocketPrefab;
     public Light lighting;
     public ScoreBoard ScoreBoard;
-    
+    public GameObject DropPoint;
     private AudioSource audioSource;
     public AudioClip pop;
     public AudioClip noFit;
@@ -113,10 +120,11 @@ public class BlobGrid : MonoBehaviour
     public AudioClip fallSound;
     public AudioClip levelUpSound;
 
-    int width = 4;
-    int depth = 2;
-    public int Height = 6;
-    int startHeight = 1;
+    int _width = 4;
+    int _depth = 2;
+    int _height = 7;
+    public int Height { get { return _height; }}
+    int startHeight = 5;
     float distance = 0.3f;//0.275f; // distance between blob sockets
     
     public SocketSelector removeThresholdSelector;
@@ -140,7 +148,6 @@ public class BlobGrid : MonoBehaviour
     ////// multiplayer properies START //////////////
     public NetworkSelection network = null;
     ////// multiplayer properies END //////////////
-    
     private void LevelUp() {
         if (!_started) {return;}
         Invoke("LevelUp", levelUpWaitSeconds);
@@ -174,10 +181,11 @@ public class BlobGrid : MonoBehaviour
         sequencialDropFailCount = 0;
         ScoreBoard.ResetBoard();
 
-        _grid = _grid == null ? new Socket[width, Height, depth] :_grid;
-        for(int x = 0; x < width; x++) {
-            for(int y = 0; y < Height; y++) {
-                for(int z = 0; z < depth; z++) {
+        //Debug.Log("Init grid. h: " + _height + " w: " + _width + " d: " + _depth);
+        _grid = _grid == null ? new Socket[_width, _height, _depth] :_grid;
+        for(int x = 0; x < _width; x++) {
+            for(int y = 0; y < _height; y++) {
+                for(int z = 0; z < _depth; z++) {
                     var position = new Position(x,y,z);
                     var positionVector =  GetPositionVector(position);
                     if (y < startHeight) {
@@ -196,24 +204,24 @@ public class BlobGrid : MonoBehaviour
             }  
         }
         if (_fillerGrid == null) {
-            _fillerGrid = new Socket[width, 1, depth];
-            for(int x = 0; x < width; x++) {
+            _fillerGrid = new Socket[_width, 1, _depth];
+            for(int x = 0; x < _width; x++) {
                 int y = 0;
-                for(int z = 0; z < depth; z++) {
+                for(int z = 0; z < _depth; z++) {
                     var position = new Position(x,y,z);
-                    InitSocketAt(position, GetPositionVector(position, fillerGridYPositionRelative + Height), _fillerGrid, false);
+                    InitSocketAt(position, GetPositionVector(position, fillerGridYPositionRelative + _height), _fillerGrid, false);
                 }                           
             }
         }
         
 
         nextWidth.onChanged = () => {
-            width = nextWidth.GetInt();
+            _width = nextWidth.GetInt();
             Reset();
         };
 
         nextHeight.onChanged = () => {
-            Height = nextHeight.GetInt();
+            _height = nextHeight.GetInt();
             Reset();
         };
 
@@ -252,12 +260,7 @@ public class BlobGrid : MonoBehaviour
     }
     private void UpdateRedLight() {
         if (sequencialDropFailCount != 0) {
-            var val = Time.time % 2.0f;
-            if (val <= 1.0f) {
-                lighting.intensity = 20 * (1.0f - val);
-            } else {
-                lighting.intensity = 20 * (val - 1.0f);
-            }
+                lighting.intensity = Beats.GetPulseTriangle() * 20;
         } else {
                 lighting.intensity = 0;
         } 
@@ -278,12 +281,12 @@ public class BlobGrid : MonoBehaviour
         }    
         ScoreBoard.ApplyScore();
         // Fill
-        for(int x = 0; x < width; x++) {
+        for(int x = 0; x < _width; x++) {
             int y = 0;
-            for(int z = 0; z < depth; z++) {
+            for(int z = 0; z < _depth; z++) {
                 if (_fillerGrid[x,y,z].Blob == null) {
                     var position = new Position(x,y,z);
-                    var vector = GetPositionVector(position, fillerGridYPositionRelative + Height); 
+                    var vector = GetPositionVector(position, fillerGridYPositionRelative + _height); 
                     if (network != null) {
                         //Debug.Log("new blob : position : " + position);
                         network.CreateBlobForMeServerRpc(vector);
@@ -297,9 +300,9 @@ public class BlobGrid : MonoBehaviour
         }
         // Fall
         bool failed = false;
-        for(int x = 0; x < width; x++) {
+        for(int x = 0; x < _width; x++) {
             int y = 0;
-            for(int z = 0; z < depth; z++) {
+            for(int z = 0; z < _depth; z++) {
                 var lowestFree = FindLowestFreeSocketOnTop(x, z); 
                 _fillerGrid[x,y,z].Blob.SetGrabLayer(Layers.FALL);             
                 _fillerGrid[x,y,z].Blob = null;
@@ -338,9 +341,9 @@ public class BlobGrid : MonoBehaviour
 
         grid[position.X, position.Y, position.Z] = socket;
 
-        socket.onSelectEntered.AddListener((_) => {
-            _.GetComponent<AI>()?.AssignToGrid(this);
-            var droppedBlob = _.GetComponent<Blob>();
+        socket.selectEntered.AddListener((_) => {
+            _.interactable.GetComponent<AI>()?.AssignToGrid(this);
+            var droppedBlob = _.interactable.GetComponent<Blob>();
             if (droppedBlob != null) { 
                 //Debug.Log("socket got blob " + droppedBlob.Color);
                 socket.Blob = droppedBlob;
@@ -350,9 +353,9 @@ public class BlobGrid : MonoBehaviour
             }
         });
 
-        socket.onSelectExited.AddListener((_) => { // move to socket..            
+        socket.selectExited.AddListener((_) => { // move to socket..            
             socket.Blob = null;
-            if(_.GetComponent<XRGrabInteractable>()?.interactionLayerMask == Layers.KEEP && !_started) { // interactionLayerMask so we dont start when we clear the board.... special call for AI that has another layer picing up. better solution would be nice, maybe tie blobs to a match id ???? 
+            if(_.interactable.GetComponent<XRGrabInteractable>()?.interactionLayerMask == Layers.KEEP && !_started) { // interactionLayerMask so we dont start when we clear the board.... special call for AI that has another layer picing up. better solution would be nice, maybe tie blobs to a match id ???? 
             //if(!_started) {
                 StartGame();
             }
@@ -403,7 +406,13 @@ public class BlobGrid : MonoBehaviour
         
         // drop out
         foreach (var blob in blobs) {
+            //blob.Destroy();
             blob.SetGrabLayer(Layers.OUT);
+            blob.MoveTowards(DropPoint.transform.position);
+            //StartCoroutine(1f,() => {
+            //    //blob.Rigidbody.MovePosition(new Vector3(1.58f, 2f, 2.7f));
+            //});
+            
         }
 
 
@@ -466,15 +475,15 @@ public class BlobGrid : MonoBehaviour
         var nextCatchingSocket = catchingSockets.First();
         nextCatchingSocket.interactionLayerMask = Layers.FALL;
 
-        UnityAction<XRBaseInteractable> catchFallingBlob = null;
+        UnityAction<SelectEnterEventArgs> catchFallingBlob = null;
         catchFallingBlob = (_) => {
-            var catchedBlob = _.GetComponent<Blob>();
+            var catchedBlob = _.interactable.GetComponent<Blob>();
             if (catchedBlob == null) {
                 Debug.Log("Wops - Tried to catch falling blob, but was no blob: " + _);
                 return;
             }
 
-            nextCatchingSocket.onSelectEntered.RemoveListener(catchFallingBlob);
+            nextCatchingSocket.selectEntered.RemoveListener(catchFallingBlob);
             // catch regular blobs 
             nextCatchingSocket.interactionLayerMask = Layers.KEEP;
             // make the catch blob not falling. 
@@ -482,14 +491,14 @@ public class BlobGrid : MonoBehaviour
             catchedBlob.SetGrabLayer(Layers.KEEP);
             CatchFallingBlobs(catchingSockets.Skip(1).ToList());
         };
-        nextCatchingSocket.onSelectEntered.AddListener(catchFallingBlob);
+        nextCatchingSocket.selectEntered.AddListener(catchFallingBlob);
     }
 
     // ------------------- Helpers -------------------
 
     // where new falling blobs will fall to 
     private Socket FindLowestFreeSocketOnTop(int x, int z) {
-        if (_grid[x, Height - 1, z].Blob != null) { // top
+        if (_grid[x, _height - 1, z].Blob != null) { // top
             return null;
         }
 
@@ -504,18 +513,18 @@ public class BlobGrid : MonoBehaviour
 
     private List<Socket> GetAboveOrderedLowestFirst(Socket socket) {
         var above = new List<Socket>();
-        if (socket.GridPosition.Y == Height - 1) {
+        if (socket.GridPosition.Y == _height - 1) {
             return above;
         }
-        for( int i = socket.GridPosition.Y + 1; i < Height ; i++) {
+        for( int i = socket.GridPosition.Y + 1; i < _height ; i++) {
             above.Add(_grid[socket.GridPosition.X, i , socket.GridPosition.Z]);
         }
         return above;
     } 
 
     private Vector3 GetPositionVector(Position position, int yStart = 0) {
-        float dx = (width - 1) * distance / 2;
-        float dz = (depth - 1) * distance / 2;
+        float dx = (_width - 1) * distance / 2;
+        float dz = (_depth - 1) * distance / 2;
         return new Vector3(position.X * distance - dx, (position.Y + yStart)* distance + 0.5f, position.Z * distance - dz) + this.transform.position;
     }
 
@@ -536,7 +545,7 @@ public class BlobGrid : MonoBehaviour
         return result.ToList();
     } 
 
-    private bool PositionInGrid(Position p) => p.X >= 0 && p.Y >= 0 && p.Z >= 0 && p.X < width && p.Y < Height && p.Z < depth;
+    private bool PositionInGrid(Position p) => p.X >= 0 && p.Y >= 0 && p.Z >= 0 && p.X < _width && p.Y < _height && p.Z < _depth;
     public Socket SocketAt(Position p) {
         if (PositionInGrid(p)) {
             return _grid[p.X,p.Y,p.Z];
